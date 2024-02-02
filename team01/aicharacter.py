@@ -1,5 +1,6 @@
 import sys
 from enum import Enum
+from heapq import heappush, heappop
 sys.path.insert(0, '../bomberman')
 # Import necessary stuff
 from entity import CharacterEntity
@@ -14,8 +15,26 @@ class AICharacter(CharacterEntity):
         curState = State.SEARCH
 
         if curState == State.SEARCH:
-            # Search for exit
-            pass
+            exitRow, exitCol = 10, 10
+            for row in range(wrld.height()):
+                for col in range(wrld.width()):
+                    if wrld.exit_at(col, row):
+                        exitRow, exitCol = row, col
+            print(exitRow, exitCol)
+            dx, dy = 0, 0
+            bomb = False
+            for c in input("How would you like to move (w=up,a=left,s=down,d=right,b=bomb)? "):
+                if 'w' == c:
+                    dy -= 1
+                if 'a' == c:
+                    dx -= 1
+                if 's' == c:
+                    dy += 1
+                if 'd' == c:
+                    dx += 1
+                if 'b' == c:
+                    bomb = True
+            self.move(dx, dy)
         if curState == State.EXIT:
             # Move to exit
             pass

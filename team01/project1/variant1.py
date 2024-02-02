@@ -13,13 +13,13 @@ sys.path.insert(1, '../teamNN')
 #from testcharacter import TestCharacter
 
 # Uncomment this if you want the interactive character
-from interactivecharacter import InteractiveCharacter
+#from interactivecharacter import InteractiveCharacter
 
 # Create the game
 g = Game.fromfile('map.txt')
 
 # TODO Add your character
-# from aicharacter import AICharacter
+from aicharacter import AICharacter
 
 # Uncomment this if you want the test character
 # g.add_character(TestCharacter("me", # name
@@ -28,7 +28,7 @@ g = Game.fromfile('map.txt')
 # ))
 
 # Uncomment this if you want the interactive character
-g.add_character(InteractiveCharacter("me", # name
+g.add_character(AICharacter("me", # name
                                      "C",  # avatar
                                      0, 0  # position
 ))
