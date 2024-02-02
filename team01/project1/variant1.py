@@ -19,6 +19,7 @@ from interactivecharacter import InteractiveCharacter
 g = Game.fromfile('map.txt')
 
 # TODO Add your character
+# from aicharacter import AICharacter
 
 # Uncomment this if you want the test character
 # g.add_character(TestCharacter("me", # name
