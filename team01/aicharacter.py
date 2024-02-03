@@ -30,8 +30,9 @@ class AICharacter(CharacterEntity):
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
         while path:
-            nextPoint = path.pop(0)
+            nextPoint = path.pop(1)
             dx, dy = nextPoint[1] - self.x, nextPoint[0] - self.y
+            print(dx, dy)
             self.move(dx,dy)
             path = self.astar(wrld, (self.y, self.x), (exitY, exitX))
         
@@ -44,7 +45,7 @@ class AICharacter(CharacterEntity):
         costs = [[float('inf') for _ in range(cols)] for _ in range(rows)]
         parent = [[None for _ in range(cols)] for _ in range(rows)]
         parent[start[0]][start[1]] = (-1,-1)
-        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (1, -1), (-1, -1), (-1, 1)]
         queue = [(0 + self.heuristic(start, goal), 0, start[0], start[1])]
         costs[start[0]][start[1]] = 0
 
