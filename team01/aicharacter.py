@@ -45,7 +45,7 @@ class AICharacter(CharacterEntity):
         costs = [[float('inf') for _ in range(cols)] for _ in range(rows)]
         parent = [[None for _ in range(cols)] for _ in range(rows)]
         parent[start[0]][start[1]] = (-1,-1)
-        directions = [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (1, -1), (-1, -1), (-1, 1)]
+        directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
         queue = [(0 + self.heuristic(start, goal), 0, start[0], start[1])]
         costs[start[0]][start[1]] = 0
 
@@ -62,10 +62,10 @@ class AICharacter(CharacterEntity):
                     monstersCost=0
                     monsters=self.findMonster(wrld)
                     for monster in monsters:
-                        print(monster)
+                        
                         dist=self.heuristic((newRow, newCol), monster)
                         if dist<=3:
-                            monstersCost+=6-dist
+                            monstersCost+=dist
                     newCost = cost + 1+monstersCost 
                     if newCost < costs[newRow][newCol]:
                         costs[newRow][newCol] = newCost
