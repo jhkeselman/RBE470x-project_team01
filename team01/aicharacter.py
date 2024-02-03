@@ -59,7 +59,14 @@ class AICharacter(CharacterEntity):
             for direction in directions:
                 newRow, newCol = curRow + direction[0], curCol + direction[1]
                 if 0 <= newRow < rows and 0 <= newCol < cols and not visited[newRow][newCol] and not wrld.wall_at(newCol, newRow):
-                    newCost = cost + 1
+                    monstersCost=0
+                    monsters=self.findMonster(wrld)
+                    for monster in monsters:
+                        print(monster)
+                        dist=self.heuristic((newRow, newCol), monster)
+                        if dist<=3:
+                            monstersCost+=6-dist
+                    newCost = cost + 1+monstersCost 
                     if newCost < costs[newRow][newCol]:
                         costs[newRow][newCol] = newCost
                         prio = newCost + self.heuristic((newRow, newCol), goal)
@@ -84,3 +91,11 @@ class AICharacter(CharacterEntity):
                 if wrld.exit_at(col, row):
                     exitY, exitX = row, col
         return exitY, exitX
+    
+    def findMonster(self,wrld):
+        monsters=[]
+        for row in range(wrld.height()):
+            for col in range(wrld.width()):
+                if wrld.monsters_at(col, row):
+                    monsters.append((row, col))
+        return monsters
