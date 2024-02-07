@@ -30,46 +30,51 @@ class AICharacter(CharacterEntity):
             self.set_cell_color(x, 0, Fore.RED + Back.GREEN)
             
         exitY, exitX = self.findExit(wrld)
-        # path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
+        path = self.astar(wrld, [self.y, self.x], [exitY, exitX])
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
-        path=True
         while path:
-            path = self.astar(wrld, (self.x, self.y), (exitX, exitY))
-            if not path:
-                break
+            print(path)
             nextPoint = path.pop(1)
-            print(nextPoint)
-            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            dx, dy = nextPoint[1] - self.x, nextPoint[0] - self.y
             print(dx, dy)
             self.move(dx,dy)
-            break
-            
-            
+            path = self.astar(wrld, (self.y, self.x), (exitY, exitX))
     
     def expectimax(self,wrld,start,goal):
-        actions = self.getActions(wrld,start)
-        # max_val = 0
-        # arg_max = 0
-        # for action in actions:
-        #     val = self.expValue(wrld,start,goal)
-        #     if(val > max_val):
-        #         max_val = val
-        #         arg_max = action
-        arg_max = self.argMax(actions,self.result) # not working yet i think, needs restructuring
+        # NOTES:
+        # State is whole world
+        # Result is after movement of ALL entities
+        # Probability is from monster movement
+        # Planned structure: 
+        # Action: [[dx,dy],place_bomb_boolean]
+        # Move: [dx,dy]
+        # 
+
+        state = wrld
+        actions = self.getActions(state,start)
+        arg_max = self.argMax(actions,self.expValue) # not working yet i think, needs restructuring
         return arg_max
     
     def expValue(self,wrld,start,goal):
         # if terminal state return utility
+
+        # for each monster move and their probabilities, get value 
+        
+
         v = 0
-        for action in self.getActions(wrld,start):
-            p = 1/len(self.getActions(wrld,start))
-            v += p*self.maxValue(self.result(wrld, action, goal))
-        return v 
+        # for action in self.getActions(wrld,start):
+        #     p = 1/len(self.getActions(wrld,start))
+        #     v += p*self.maxValue(self.result(wrld, action, goal))
+        return v
     
-    def argMax(args,util_function):
+    def stateValue(self, state):
+        # Evaluate util of a state
+        return 0
+    
+    def argMax(self,args,util_function):
         max_val = 0
         arg_max = None
         for arg in args:
@@ -91,13 +96,20 @@ class AICharacter(CharacterEntity):
         nextWrld = wrld.sensedWorld.next()
         return nextWrld, start, goal
     
-    def getActions(self, wrld, start):
-        possibleActions = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
-        validActions = []
-        for action in possibleActions:
-            if wrld.wall_at(action[0], action[1]) == False and self.withinBounds(wrld, action[0]+start[0], action[1]+start[1]):
-                validActions.append(action)
-        return validActions
+    def getActions(self, state):
+        moves = self.getValidMoves(state, "extract position from world")
+        # add in bombs later
+        return moves
+    
+    def getValidMoves(self, wrld, start):
+        possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
+        validMoves = []
+        for move in possibleMoves:
+            if wrld.wall_at(move[0], move[1]) == False and self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]):
+                validMoves.append(move)
+        return validMoves
+    
+    
     
     def withinBounds(self, wrld, x, y):
         if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
@@ -113,6 +125,7 @@ class AICharacter(CharacterEntity):
         pq.put((tuple(start),None,0),0)
         explored={}#dict of everything being added as the key and the node that added them (the item) for easy checking to prevent re adding. easy to retrace the path with
         print(start,goal)
+        
         while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
             steps+=1
             element=pq.get()#pulling the first item added to the q which will in practice be the lowest level for bfs exploration
@@ -130,13 +143,12 @@ class AICharacter(CharacterEntity):
                     monstersCost=0
                     monsters=self.findMonster(wrld)
                     for monster in monsters:
-                        # print(monster)
-                        dist=self.heuristic(neighbor, monster)
-                        if dist<=4:
+                        dist=self.heuristic((neighbor[0], neighbor[1]), monster)
+                        if dist<=3:
                             monstersCost+=2*(4-dist)
                     f=g+1+self.heuristic(neighbor,goal)+monstersCost#heuristic is the manhattan distance and is used cause this is A*
                 
-                    pq.put((neighbor,exploring,g+1+monstersCost),f)
+                    pq.put((neighbor,exploring,g+1),f)
             # print(pq.get_queue())
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
@@ -147,36 +159,36 @@ class AICharacter(CharacterEntity):
 
     #Helper function to return the walkable neighbors 
     def getNeighbor(self,wrld, cell):
-        cellx=cell[0]
-        celly=cell[1]
+        cellr=cell[0]
+        cellc=cell[1]
         neighbors=[]
         rows, cols = wrld.height(), wrld.width()
-        if wrld.wall_at(cellx,celly)==1:
+        if wrld.wall_at(cellr,cellc)==1:
             return neighbors
-        if celly<rows-1:
-            if wrld.wall_at(cellx,celly+1)==0:
-                neighbors.append((cellx,celly+1))
-        if cellx<cols-1:
-            if wrld.wall_at(cellx+1,celly)==0:
-                neighbors.append((cellx+1,celly))
-            if celly>0:
-                if wrld.wall_at(cellx+1,celly-1)==0:
-                    neighbors.append((cellx+1,celly-1)) 
-            if celly<rows-1:
-                if wrld.wall_at(cellx+1,celly+1)==0:
-                    neighbors.append((cellx+1,celly+1))
-        if celly>0:
-            if wrld.wall_at(cellx,celly-1)==0:
-                neighbors.append((cellx,celly-1))
-        if cellx>0:
-            if wrld.wall_at(cellx-1,celly)==0:
-                neighbors.append((cellx-1,celly))
-            if celly>0:
-                if wrld.wall_at(cellx-1,celly-1)==0:
-                    neighbors.append((cellx-1,celly-1)) 
-            if celly<rows-1:
-                if wrld.wall_at(cellx-1,celly+1)==0:
-                    neighbors.append((cellx-1,celly+1))
+        if cellc<cols-1:
+            if wrld.wall_at(cellr,cellc+1)==0:
+                neighbors.append((cellr,cellc+1))
+        if cellr<rows-1:
+            if wrld.wall_at(cellr+1,cellc)==0:
+                neighbors.append((cellr+1,cellc))
+            if cellc>0:
+                if wrld.wall_at(cellr+1,cellc-1)==0:
+                    neighbors.append((cellr+1,cellc-1)) 
+            if cellc<cols-1:
+                if wrld.wall_at(cellr+1,cellc+1)==0:
+                    neighbors.append((cellr+1,cellc+1))
+        if cellc>0:
+            if wrld.wall_at(cellr,cellc-1)==0:
+                neighbors.append((cellr,cellc-1))
+        if cellr>0:
+            if wrld.wall_at(cellr-1,cellc)==0:
+                neighbors.append((cellr-1,cellc))
+            if cellc>0:
+                if wrld.wall_at(cellr-1,cellc-1)==0:
+                    neighbors.append((cellr-1,cellc-1)) 
+            if cellc<cols-1:
+                if wrld.wall_at(cellr-1,cellc+1)==0:
+                    neighbors.append((cellr-1,cellc+1))
 
         
         # print(neighbors)
@@ -264,5 +276,5 @@ class AICharacter(CharacterEntity):
         for row in range(wrld.height()):
             for col in range(wrld.width()):
                 if wrld.monsters_at(col, row):
-                    monsters.append((col,row))
+                    monsters.append((row, col))
         return monsters
