@@ -133,7 +133,7 @@ class AICharacter(CharacterEntity):
                         # print(monster)
                         dist=self.heuristic(neighbor, monster)
                         if dist<=4:
-                            monstersCost+=5*(4-dist)
+                            monstersCost+=2*(4-dist)
                     f=g+1+self.heuristic(neighbor,goal)+monstersCost#heuristic is the manhattan distance and is used cause this is A*
                 
                     pq.put((neighbor,exploring,g+1+monstersCost),f)
