@@ -30,18 +30,24 @@ class AICharacter(CharacterEntity):
             self.set_cell_color(x, 0, Fore.RED + Back.GREEN)
             
         exitY, exitX = self.findExit(wrld)
-        path = self.astar(wrld, [self.y, self.x], [exitY, exitX])
+        # path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
+        path=True
         while path:
-            print(path)
+            path = self.astar(wrld, (self.x, self.y), (exitX, exitY))
+            if not path:
+                break
             nextPoint = path.pop(1)
-            dx, dy = nextPoint[1] - self.x, nextPoint[0] - self.y
+            print(nextPoint)
+            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
             print(dx, dy)
             self.move(dx,dy)
-            path = self.astar(wrld, (self.y, self.x), (exitY, exitX))
+            break
+            
+            
     
     def expectimax(self,wrld,start,goal):
         actions = self.getActions(wrld,start)
@@ -107,7 +113,6 @@ class AICharacter(CharacterEntity):
         pq.put((tuple(start),None,0),0)
         explored={}#dict of everything being added as the key and the node that added them (the item) for easy checking to prevent re adding. easy to retrace the path with
         print(start,goal)
-        
         while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
             steps+=1
             element=pq.get()#pulling the first item added to the q which will in practice be the lowest level for bfs exploration
@@ -125,12 +130,13 @@ class AICharacter(CharacterEntity):
                     monstersCost=0
                     monsters=self.findMonster(wrld)
                     for monster in monsters:
-                        dist=self.heuristic((neighbor[0], neighbor[1]), monster)
-                        if dist<=3:
-                            monstersCost+=2*(4-dist)
+                        # print(monster)
+                        dist=self.heuristic(neighbor, monster)
+                        if dist<=4:
+                            monstersCost+=5*(4-dist)
                     f=g+1+self.heuristic(neighbor,goal)+monstersCost#heuristic is the manhattan distance and is used cause this is A*
                 
-                    pq.put((neighbor,exploring,g+1),f)
+                    pq.put((neighbor,exploring,g+1+monstersCost),f)
             # print(pq.get_queue())
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
@@ -141,36 +147,36 @@ class AICharacter(CharacterEntity):
 
     #Helper function to return the walkable neighbors 
     def getNeighbor(self,wrld, cell):
-        cellr=cell[0]
-        cellc=cell[1]
+        cellx=cell[0]
+        celly=cell[1]
         neighbors=[]
         rows, cols = wrld.height(), wrld.width()
-        if wrld.wall_at(cellr,cellc)==1:
+        if wrld.wall_at(cellx,celly)==1:
             return neighbors
-        if cellc<cols-1:
-            if wrld.wall_at(cellr,cellc+1)==0:
-                neighbors.append((cellr,cellc+1))
-        if cellr<rows-1:
-            if wrld.wall_at(cellr+1,cellc)==0:
-                neighbors.append((cellr+1,cellc))
-            if cellc>0:
-                if wrld.wall_at(cellr+1,cellc-1)==0:
-                    neighbors.append((cellr+1,cellc-1)) 
-            if cellc<cols-1:
-                if wrld.wall_at(cellr+1,cellc+1)==0:
-                    neighbors.append((cellr+1,cellc+1))
-        if cellc>0:
-            if wrld.wall_at(cellr,cellc-1)==0:
-                neighbors.append((cellr,cellc-1))
-        if cellr>0:
-            if wrld.wall_at(cellr-1,cellc)==0:
-                neighbors.append((cellr-1,cellc))
-            if cellc>0:
-                if wrld.wall_at(cellr-1,cellc-1)==0:
-                    neighbors.append((cellr-1,cellc-1)) 
-            if cellc<cols-1:
-                if wrld.wall_at(cellr-1,cellc+1)==0:
-                    neighbors.append((cellr-1,cellc+1))
+        if celly<rows-1:
+            if wrld.wall_at(cellx,celly+1)==0:
+                neighbors.append((cellx,celly+1))
+        if cellx<cols-1:
+            if wrld.wall_at(cellx+1,celly)==0:
+                neighbors.append((cellx+1,celly))
+            if celly>0:
+                if wrld.wall_at(cellx+1,celly-1)==0:
+                    neighbors.append((cellx+1,celly-1)) 
+            if celly<rows-1:
+                if wrld.wall_at(cellx+1,celly+1)==0:
+                    neighbors.append((cellx+1,celly+1))
+        if celly>0:
+            if wrld.wall_at(cellx,celly-1)==0:
+                neighbors.append((cellx,celly-1))
+        if cellx>0:
+            if wrld.wall_at(cellx-1,celly)==0:
+                neighbors.append((cellx-1,celly))
+            if celly>0:
+                if wrld.wall_at(cellx-1,celly-1)==0:
+                    neighbors.append((cellx-1,celly-1)) 
+            if celly<rows-1:
+                if wrld.wall_at(cellx-1,celly+1)==0:
+                    neighbors.append((cellx-1,celly+1))
 
         
         # print(neighbors)
@@ -258,5 +264,5 @@ class AICharacter(CharacterEntity):
         for row in range(wrld.height()):
             for col in range(wrld.width()):
                 if wrld.monsters_at(col, row):
-                    monsters.append((row, col))
+                    monsters.append((col,row))
         return monsters
