@@ -30,18 +30,18 @@ class AICharacter(CharacterEntity):
             self.set_cell_color(x, 0, Fore.RED + Back.GREEN)
             
         exitY, exitX = self.findExit(wrld)
-        path = self.astar(wrld, [self.y, self.x], [exitY, exitX])
+        path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
-        while path:
+        if path:
             print(path)
             nextPoint = path.pop(1)
-            dx, dy = nextPoint[1] - self.x, nextPoint[0] - self.y
+            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
             print(dx, dy)
             self.move(dx,dy)
-            path = self.astar(wrld, (self.y, self.x), (exitY, exitX))
+            path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
     
     def expectimax(self,wrld,start,goal):
         # NOTES:
@@ -159,36 +159,67 @@ class AICharacter(CharacterEntity):
 
     #Helper function to return the walkable neighbors 
     def getNeighbor(self,wrld, cell):
-        cellr=cell[0]
-        cellc=cell[1]
+        cellx=cell[0]
+        celly=cell[1]
         neighbors=[]
         rows, cols = wrld.height(), wrld.width()
-        if wrld.wall_at(cellr,cellc)==1:
+        if wrld.wall_at(cellx,celly)==1:
             return neighbors
-        if cellc<cols-1:
-            if wrld.wall_at(cellr,cellc+1)==0:
-                neighbors.append((cellr,cellc+1))
-        if cellr<rows-1:
-            if wrld.wall_at(cellr+1,cellc)==0:
-                neighbors.append((cellr+1,cellc))
-            if cellc>0:
-                if wrld.wall_at(cellr+1,cellc-1)==0:
-                    neighbors.append((cellr+1,cellc-1)) 
-            if cellc<cols-1:
-                if wrld.wall_at(cellr+1,cellc+1)==0:
-                    neighbors.append((cellr+1,cellc+1))
-        if cellc>0:
-            if wrld.wall_at(cellr,cellc-1)==0:
-                neighbors.append((cellr,cellc-1))
-        if cellr>0:
-            if wrld.wall_at(cellr-1,cellc)==0:
-                neighbors.append((cellr-1,cellc))
-            if cellc>0:
-                if wrld.wall_at(cellr-1,cellc-1)==0:
-                    neighbors.append((cellr-1,cellc-1)) 
-            if cellc<cols-1:
-                if wrld.wall_at(cellr-1,cellc+1)==0:
-                    neighbors.append((cellr-1,cellc+1))
+        if celly<rows-1:
+            if wrld.wall_at(cellx,celly+1)==0:
+                neighbors.append((cellx,celly+1))
+        if cellx<cols-1:
+            if wrld.wall_at(cellx+1,celly)==0:
+                neighbors.append((cellx+1,celly))
+            if celly>0:
+                if wrld.wall_at(cellx+1,celly-1)==0:
+                    neighbors.append((cellx+1,celly-1)) 
+            if celly<rows-1:
+                if wrld.wall_at(cellx+1,celly+1)==0:
+                    neighbors.append((cellx+1,celly+1))
+        if celly>0:
+            if wrld.wall_at(cellx,celly-1)==0:
+                neighbors.append((cellx,celly-1))
+        if cellx>0:
+            if wrld.wall_at(cellx-1,celly)==0:
+                neighbors.append((cellx-1,celly))
+            if celly>0:
+                if wrld.wall_at(cellx-1,celly-1)==0:
+                    neighbors.append((cellx-1,celly-1)) 
+            if celly<rows-1:
+                if wrld.wall_at(cellx-1,celly+1)==0:
+                    neighbors.append((cellx-1,celly+1))
+
+        # cellr=cell[0]
+        # cellc=cell[1]
+        # neighbors=[]
+        # rows, cols = wrld.height(), wrld.width()
+        # if wrld.wall_at(cellr,cellc)==1:
+        #     return neighbors
+        # if cellc<cols-1:
+        #     if wrld.wall_at(cellr,cellc+1)==0:
+        #         neighbors.append((cellr,cellc+1))
+        # if cellr<rows-1:
+        #     if wrld.wall_at(cellr+1,cellc)==0:
+        #         neighbors.append((cellr+1,cellc))
+        #     if cellc>0:
+        #         if wrld.wall_at(cellr+1,cellc-1)==0:
+        #             neighbors.append((cellr+1,cellc-1)) 
+        #     if cellc<cols-1:
+        #         if wrld.wall_at(cellr+1,cellc+1)==0:
+        #             neighbors.append((cellr+1,cellc+1))
+        # if cellc>0:
+        #     if wrld.wall_at(cellr,cellc-1)==0:
+        #         neighbors.append((cellr,cellc-1))
+        # if cellr>0:
+        #     if wrld.wall_at(cellr-1,cellc)==0:
+        #         neighbors.append((cellr-1,cellc))
+        #     if cellc>0:
+        #         if wrld.wall_at(cellr-1,cellc-1)==0:
+        #             neighbors.append((cellr-1,cellc-1)) 
+        #     if cellc<cols-1:
+        #         if wrld.wall_at(cellr-1,cellc+1)==0:
+        #             neighbors.append((cellr-1,cellc+1))
 
         
         # print(neighbors)
@@ -276,5 +307,5 @@ class AICharacter(CharacterEntity):
         for row in range(wrld.height()):
             for col in range(wrld.width()):
                 if wrld.monsters_at(col, row):
-                    monsters.append((row, col))
+                    monsters.append((col, row))
         return monsters
