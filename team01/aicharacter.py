@@ -60,6 +60,8 @@ class AICharacter(CharacterEntity):
     
     def expValue(self,wrld,start,goal):
         # if terminal state return utility
+        # if self.terminalState(wrld,start):
+        #     return self.stateValue(wrld)
 
         # for each monster move and their probabilities, get value 
         
@@ -70,6 +72,11 @@ class AICharacter(CharacterEntity):
         #     v += p*self.maxValue(self.result(wrld, action, goal))
         return v
     
+    # def terminalState(self, wrld, start):
+    #     if wrld.monsters_at(start[0], start[1]) or wrld.explosion_at(start[0], start[1]) or wrld.exit_at(start[0], start[1]) == True:
+    #         return True
+    #     return False
+        
     def stateValue(self, state):
         # Evaluate util of a state
         return 0
@@ -86,8 +93,10 @@ class AICharacter(CharacterEntity):
 
     def maxValue(self,wrld,start, goal):
         # if terminal state return utility
+        # if self.terminalState(wrld,start):
+        #     return self.stateValue(wrld)
         v = float('-inf')
-        for action in self.actions(wrld,start):
+        for action in self.getActions(wrld,start):
             v = max(v, self.expValue(self.result(wrld, action, goal)))
         return v
     
@@ -96,9 +105,11 @@ class AICharacter(CharacterEntity):
         nextWrld = wrld.sensedWorld.next()
         return nextWrld, start, goal
     
-    def getActions(self, state):
-        moves = self.getValidMoves(state, "extract position from world")
-        # add in bombs later
+    def getActions(self, wrld, start):
+        moves = self.getValidMoves(wrld, start, "extract position from world")
+        if self.findBomb(wrld) == None:
+            for move in moves:
+                moves.append((move, True))
         return moves
     
     def getValidMoves(self, wrld, start):
@@ -106,7 +117,7 @@ class AICharacter(CharacterEntity):
         validMoves = []
         for move in possibleMoves:
             if wrld.wall_at(move[0], move[1]) == False and self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]):
-                validMoves.append(move)
+                validMoves.append(move, False)
         return validMoves
     
     
@@ -141,7 +152,7 @@ class AICharacter(CharacterEntity):
             for neighbor in neighbors:
                 if explored.get(neighbor) is None or explored.get(neighbor)[2]>g+1:
                     monstersCost=0
-                    monsters=self.findMonster(wrld)
+                    monsters=self.findMonsters(wrld)
                     for monster in monsters:
                         dist=self.heuristic((neighbor[0], neighbor[1]), monster)
                         if dist<=3:
@@ -271,10 +282,17 @@ class AICharacter(CharacterEntity):
                     exitY, exitX = row, col
         return exitY, exitX
     
-    def findMonster(self,wrld):
+    def findMonsters(self,wrld):
         monsters=[]
         for row in range(wrld.height()):
             for col in range(wrld.width()):
                 if wrld.monsters_at(col, row):
                     monsters.append((row, col))
         return monsters
+    
+    def findBomb(self,wrld):
+        for row in range(wrld.height()):
+            for col in range(wrld.width()):
+                if wrld.monsters_at(col, row):
+                    return (row, col)
+        return None
