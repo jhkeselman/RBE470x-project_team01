@@ -102,6 +102,8 @@ class AICharacter(CharacterEntity):
     
     def result(self,wrld,action,start,goal):
         self.move(action[0],action[1])
+        if action[2]:
+            self.place_bomb()
         nextWrld = wrld.sensedWorld.next()
         return nextWrld, start, goal
     
@@ -120,8 +122,6 @@ class AICharacter(CharacterEntity):
                 validMoves.append(move, False)
         return validMoves
     
-    
-    
     def withinBounds(self, wrld, x, y):
         if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
             return False
@@ -129,7 +129,7 @@ class AICharacter(CharacterEntity):
         
     def astar(self, wrld, start, goal):
         path = []
-        steps = 0
+        #steps = 0
         found = False
 
         pq=PriorityQueue() #
@@ -138,7 +138,7 @@ class AICharacter(CharacterEntity):
         print(start,goal)
         
         while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
-            steps+=1
+            #steps+=1
             element=pq.get()#pulling the first item added to the q which will in practice be the lowest level for bfs exploration
             exploring=element[0]
             g=element[2]
@@ -163,9 +163,9 @@ class AICharacter(CharacterEntity):
             # print(pq.get_queue())
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
-            print(f"It takes {steps} steps to find a path using A*")
-        else:
-            print("No path found")
+        #     print(f"It takes {steps} steps to find a path using A*")
+        # else:
+        #     print("No path found")
         return path
 
     #Helper function to return the walkable neighbors 
@@ -256,7 +256,7 @@ class AICharacter(CharacterEntity):
                     # This should never happen given the way the algorithm is implemented
                     return []
             path = [list(start)] + path
-            print(path)
+            # print(path)
             return path
 
         # path = []
