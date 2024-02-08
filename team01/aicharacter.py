@@ -31,21 +31,20 @@ class AICharacter(CharacterEntity):
             
         exitY, exitX = self.findExit(wrld)
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
+        print("Minimax move: ")
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
         if path:
-            print(path)
             nextPoint = path.pop(1)
             dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-            print(dx, dy)
             self.move(dx,dy)
             path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
 
     def abMinimax(self, wrld, depth):
         v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
-        return v # return the action in ACTIONS(state) with value v
+        return self.argMax(self.getActions(wrld), self.utility)
     
     def maxValue(self, wrld, alpha, beta, depth):
         if self.terminalState(wrld, depth):
@@ -69,17 +68,22 @@ class AICharacter(CharacterEntity):
             beta = min(beta, v)
         return v
     
+    def result(self, wrld, action):
+        self.move(action[0], action[1])
+        if action[2]:
+            self.place_bomb()
+        return wrld.sensedWorld.next()
+
     def terminalState(self, wrld, depth):
-        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) != [] or wrld.explosion_at(self.x, self.y) # or if monster is at the same position as the player or bomb at same position as player
+        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) != [] or wrld.explosion_at(self.x, self.y)
     
     def utility(self, wrld):
-        scores = wrld.scores()
+        scores = wrld.scores
         util = scores[self.name]
         mD = self.monsterDistances(wrld)
+        if mD[0] == 0 or len(mD[1]):
+            return util + 1000
         return util + sum(mD[2]) + (sum(mD[1]) / len(mD[1])) - mD[0]
-    
-    def getActions(self, wrld):
-        return []
     
     def monsterDistances(self, wrld):
         x, y = self.x, self.y
@@ -93,6 +97,37 @@ class AICharacter(CharacterEntity):
             monsterGoalDist.append(len(self.astar(wrld, monster, [goalx, goaly])))
         return goalDist, monsterGoalDist, monsterDistances
     
+    def getActions(self, wrld):
+        start = (self.x, self.y)
+        moves = self.getValidMoves(wrld, start)
+        if self.findBomb(wrld) == None:
+            for move in moves:
+                moves.append((move, True))
+        return moves
+    
+    def getValidMoves(self, wrld, start):
+        possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
+        validMoves = []
+        for move in possibleMoves:
+            if wrld.wall_at(move[0], move[1]) == False and self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]):
+                validMoves.append((move, False))
+        return validMoves
+    
+    def withinBounds(self, wrld, x, y):
+        if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
+            return False
+        return True
+    
+    def argMax(self, args, util_function):
+        max_val = 0
+        arg_max = None
+        for arg in args:
+            val = util_function(*arg)
+            if(val > max_val):
+                max_val = val
+                arg_max = arg
+        return arg_max
+
     # def expectimax(self,wrld,start,goal):
     #     # NOTES:
     #     # State is whole world
@@ -185,7 +220,7 @@ class AICharacter(CharacterEntity):
         pq=PriorityQueue() #
         pq.put((tuple(start),None,0),0)
         explored={}#dict of everything being added as the key and the node that added them (the item) for easy checking to prevent re adding. easy to retrace the path with
-        print(start,goal)
+        # print(start,goal)
         
         while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
             #steps+=1
@@ -195,7 +230,7 @@ class AICharacter(CharacterEntity):
             explored[exploring] = element
             if exploring == tuple(goal):#exploring the goal exit condition
                 found=True
-                print('found goal')
+                # print('found goal')
                 break
             
             neighbors=self.getNeighbor(wrld,exploring)
