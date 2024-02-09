@@ -51,83 +51,125 @@ class AICharacter(CharacterEntity):
             path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
             # exit()
 
-    def abMinimax(self, wrld, depth):
-        v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
-        return v, self.optimalAction
+    def abSearch(self, wrld, depth):
+        v = self.maxValue(self, wrld, depth, float('-inf'), float('inf'))
+        return v # actually return an action
     
-    def maxValue(self, wrld, alpha, beta, depth):
+    def maxValue(self, wrld, depth, alpha, beta):
         if self.terminalState(wrld, depth):
             return self.utility(wrld)
         v = float('-inf')
         for action in self.getActions(wrld):
-            v = max(v, self.minValue(self.result(wrld, action), alpha, beta, depth - 1))
+            v = max(v, self.minValue(self.result(wrld, action), depth - 1, alpha, beta))
             if v >= beta:
-                self.optimalAction = action
                 return v
             alpha = max(alpha, v)
-        self.optimalAction = action
         return v
     
-    def minValue(self, wrld, alpha, beta, depth):
+    def minValue(self, wrld, depth, alpha, beta):
         if self.terminalState(wrld, depth):
             return self.utility(wrld)
         v = float('inf')
-        for action in self.getActions(wrld):
-            v = min(v, self.maxValue(self.result(wrld, action), alpha, beta, depth - 1))
+        for action in self.getMonsterActions(wrld):
+            v = min(v, self.maxValue(self.result(wrld, action), depth - 1, alpha, beta))
             if v <= alpha:
-                self.optimalAction = action
                 return v
             beta = min(beta, v)
-        self.optimalAction = action
         return v
     
-    def result(self, wrld, action):
-        self.move(action[0], action[1])
-        nextWrld, _ = wrld.next()
-        return nextWrld
-
+    def getActions(self, wrld):
+        return []
+    
+    def getMonsterActions(self, wrld):
+        return []
+    
     def terminalState(self, wrld, depth):
-        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y)or wrld.explosion_at(self.x, self.y)
+        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) or wrld.explosion_at(self.x, self.y)
+    
+    def result(self, wrld, action):
+        return wrld # fix
     
     def utility(self, wrld):
-        scores = wrld.scores
-        util = scores[self.name]
-        mD = self.monsterDistances(wrld)
         charx, chary = self.findChar(wrld)
-        # if mD[0] == 0 or len(mD[1]) == 0:
-        #     return util + 1000
         return  wrld.time - self.wave[charx][chary]# + sum(mD[2]) #- mD[0] #+ (sum(mD[1]) / len(mD[1]))
+
+    # def abMinimax(self, wrld, depth):
+    #     v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
+    #     return v, self.optimalAction
     
-    def monsterDistances(self, wrld):
-        x, y = self.x, self.y
-        goalx, goaly = self.findExit(wrld)
-        monsters = self.findMonsters(wrld)
-        # goalDist = len(self.astar(wrld, [x, y], [goalx, goaly]))
-        goalDist = self.wave[self.x][self.y]
-        monsterGoalDist = []
-        monsterDistances = []
-        for monster in monsters:
-            # monsterDistances.append(len(self.astar(wrld, [x, y], monster)))
-            monsterGoalDist.append(len(self.wave[monster[0]][monster[1]]))
-        return goalDist, monsterGoalDist, monsterDistances
+    # def maxValue(self, wrld, alpha, beta, depth):
+    #     if self.terminalState(wrld, depth):
+    #         return self.utility(wrld)
+    #     v = float('-inf')
+    #     for action in self.getActions(wrld):
+    #         v = max(v, self.minValue(self.result(wrld, action), alpha, beta, depth - 1))
+    #         if v >= beta:
+    #             self.optimalAction = action
+    #             return v
+    #         alpha = max(alpha, v)
+    #     self.optimalAction = action
+    #     return v
     
-    def getActions(self, wrld):
-        start = (self.x, self.y)
-        moves = self.getValidMoves(wrld, start)
-        return moves
+    # def minValue(self, wrld, alpha, beta, depth):
+    #     if self.terminalState(wrld, depth):
+    #         return self.utility(wrld)
+    #     v = float('inf')
+    #     for action in self.getActions(wrld):
+    #         v = min(v, self.maxValue(self.result(wrld, action), alpha, beta, depth - 1))
+    #         if v <= alpha:
+    #             self.optimalAction = action
+    #             return v
+    #         beta = min(beta, v)
+    #     self.optimalAction = action
+    #     return v
     
-    def getValidMoves(self, wrld, start):
-        possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
-        validMoves = []
-        for move in possibleMoves:
-            if  self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]) and wrld.wall_at(start[0] + move[0], start[1] + move[1]) == False:
-                validMoves.append(move)
-        return validMoves
+    # def result(self, wrld, action):
+    #     self.move(action[0], action[1])
+    #     nextWrld, _ = wrld.next()
+    #     return nextWrld
+
+    # def terminalState(self, wrld, depth):
+    #     return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y)or wrld.explosion_at(self.x, self.y)
     
-    def withinBounds(self, wrld, x, y):
-        if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
-            return False
-        return True
+    # def utility(self, wrld):
+    #     scores = wrld.scores
+    #     util = scores[self.name]
+    #     mD = self.monsterDistances(wrld)
+    #     charx, chary = self.findChar(wrld)
+    #     # if mD[0] == 0 or len(mD[1]) == 0:
+    #     #     return util + 1000
+    #     return  wrld.time - self.wave[charx][chary]# + sum(mD[2]) #- mD[0] #+ (sum(mD[1]) / len(mD[1]))
+    
+    # def monsterDistances(self, wrld):
+    #     x, y = self.x, self.y
+    #     goalx, goaly = self.findExit(wrld)
+    #     monsters = self.findMonsters(wrld)
+    #     # goalDist = len(self.astar(wrld, [x, y], [goalx, goaly]))
+    #     goalDist = self.wave[self.x][self.y]
+    #     monsterGoalDist = []
+    #     monsterDistances = []
+    #     for monster in monsters:
+    #         # monsterDistances.append(len(self.astar(wrld, [x, y], monster)))
+    #         monsterGoalDist.append(len(self.wave[monster[0]][monster[1]]))
+    #     return goalDist, monsterGoalDist, monsterDistances
+    
+    # def getActions(self, wrld):
+    #     start = (self.x, self.y)
+    #     moves = self.getValidMoves(wrld, start)
+    #     return moves
+    
+    # def getValidMoves(self, wrld, start):
+    #     possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
+    #     validMoves = []
+    #     for move in possibleMoves:
+    #         if  self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]) and wrld.wall_at(start[0] + move[0], start[1] + move[1]) == False:
+    #             validMoves.append(move)
+    #     return validMoves
+    
+    # def withinBounds(self, wrld, x, y):
+    #     if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
+    #         return False
+    #     return True
 
     # def expectimax(self,wrld,start,goal):
     #     # NOTES:
