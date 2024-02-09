@@ -31,7 +31,7 @@ class AICharacter(CharacterEntity):
             
         exitY, exitX = self.findExit(wrld)
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-        print("Minimax move: ")
+        #print("Minimax move: ", self.abMinimax(wrld, 3))
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
@@ -44,10 +44,11 @@ class AICharacter(CharacterEntity):
 
     def abMinimax(self, wrld, depth):
         v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
-        return self.argMax(self.getActions(wrld), self.utility)
+        return v
     
     def maxValue(self, wrld, alpha, beta, depth):
         if self.terminalState(wrld, depth):
+            print("Utility: ", self.utility(wrld))
             return self.utility(wrld)
         v = float('-inf')
         for action in self.getActions(wrld):
@@ -70,12 +71,11 @@ class AICharacter(CharacterEntity):
     
     def result(self, wrld, action):
         self.move(action[0], action[1])
-        if action[2]:
-            self.place_bomb()
-        return wrld.sensedWorld.next()
+        nextWrld, _ = wrld.next()
+        return nextWrld
 
     def terminalState(self, wrld, depth):
-        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) != [] or wrld.explosion_at(self.x, self.y)
+        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y)or wrld.explosion_at(self.x, self.y)
     
     def utility(self, wrld):
         scores = wrld.scores
@@ -100,9 +100,6 @@ class AICharacter(CharacterEntity):
     def getActions(self, wrld):
         start = (self.x, self.y)
         moves = self.getValidMoves(wrld, start)
-        if self.findBomb(wrld) == None:
-            for move in moves:
-                moves.append((move, True))
         return moves
     
     def getValidMoves(self, wrld, start):
@@ -110,23 +107,13 @@ class AICharacter(CharacterEntity):
         validMoves = []
         for move in possibleMoves:
             if wrld.wall_at(move[0], move[1]) == False and self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]):
-                validMoves.append((move, False))
+                validMoves.append(move)
         return validMoves
     
     def withinBounds(self, wrld, x, y):
         if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
             return False
         return True
-    
-    def argMax(self, args, util_function):
-        max_val = 0
-        arg_max = None
-        for arg in args:
-            val = util_function(*arg)
-            if(val > max_val):
-                max_val = val
-                arg_max = arg
-        return arg_max
 
     # def expectimax(self,wrld,start,goal):
     #     # NOTES:
