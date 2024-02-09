@@ -250,8 +250,13 @@ class AICharacter(CharacterEntity):
         celly=cell[1]
         neighbors=[]
         rows, cols = wrld.height(), wrld.width()
+        
+        if cellx<0 or cellx>=cols or celly<0 or celly>=rows:
+            return neighbors
+        # print(cellx,celly)
         if wrld.wall_at(cellx,celly)==1:
             return neighbors
+        
         if celly<rows-1:
             if wrld.wall_at(cellx,celly+1)==0:
                 neighbors.append((cellx,celly+1))
@@ -379,7 +384,7 @@ class AICharacter(CharacterEntity):
         # return path
     
     def heuristic(self,p1, p2):
-        return max(abs(p2[0]-p1[0]),abs(p2[1]-p1[1]))
+        return sum([abs(p2[0]-p1[0]),abs(p2[1]-p1[1])])
         
     def findExit(self,wrld):
         exitY, exitX = 0, 0
