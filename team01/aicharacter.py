@@ -24,6 +24,8 @@ class AICharacter(CharacterEntity):
     #     self.y = y
     #     self.curState = State.SEARCH
 
+    optimalAction = ()
+
     def do(self, wrld):
         # if self.curState == self.State.SEARCH:
         for x in range(wrld.width()):
@@ -31,7 +33,6 @@ class AICharacter(CharacterEntity):
             
         exitY, exitX = self.findExit(wrld)
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-        print("Minimax v: ", self.abMinimax(wrld, 3))
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
@@ -39,23 +40,24 @@ class AICharacter(CharacterEntity):
         if path:
             nextPoint = path.pop(1)
             dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-            self.move(dx,dy)
+            self.move(dx, dy)
             path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
 
     def abMinimax(self, wrld, depth):
         v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
-        return v
+        return v, self.optimalAction
     
     def maxValue(self, wrld, alpha, beta, depth):
         if self.terminalState(wrld, depth):
             return self.utility(wrld)
         v = float('-inf')
-        print(self.getActions(wrld))
         for action in self.getActions(wrld):
             v = max(v, self.minValue(self.result(wrld, action), alpha, beta, depth - 1))
             if v >= beta:
+                self.optimalAction = action
                 return v
             alpha = max(alpha, v)
+        self.optimalAction = action
         return v
     
     def minValue(self, wrld, alpha, beta, depth):
@@ -65,8 +67,10 @@ class AICharacter(CharacterEntity):
         for action in self.getActions(wrld):
             v = min(v, self.maxValue(self.result(wrld, action), alpha, beta, depth - 1))
             if v <= alpha:
+                self.optimalAction = action
                 return v
             beta = min(beta, v)
+        self.optimalAction = action
         return v
     
     def result(self, wrld, action):
@@ -81,7 +85,7 @@ class AICharacter(CharacterEntity):
         scores = wrld.scores
         util = scores[self.name]
         mD = self.monsterDistances(wrld)
-        if mD[0] == 0 or len(mD[1]):
+        if mD[0] == 0 or len(mD[1]) == 0:
             return util + 1000
         return util + sum(mD[2]) + (sum(mD[1]) / len(mD[1])) - mD[0]
     
