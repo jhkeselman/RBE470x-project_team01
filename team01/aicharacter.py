@@ -25,23 +25,31 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
+    wave=None
 
     def do(self, wrld):
+        
         # if self.curState == self.State.SEARCH:
         for x in range(wrld.width()):
             self.set_cell_color(x, 0, Fore.RED + Back.GREEN)
             
         exitY, exitX = self.findExit(wrld)
+        if self.wave is None:
+            self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
         if path:
-            nextPoint = path.pop(1)
-            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            # nextPoint = path.pop(1)
+            # dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            v, self.optimalAction = self.abMinimax(wrld, 3)
+            print("v",v,"time",wrld.time,"action",self.optimalAction,"wave",self.wave[self.x][self.y])
+            dx, dy = self.optimalAction[0], self.optimalAction[1]
             self.move(dx, dy)
             path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
+            # exit()
 
     def abMinimax(self, wrld, depth):
         v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
@@ -85,20 +93,22 @@ class AICharacter(CharacterEntity):
         scores = wrld.scores
         util = scores[self.name]
         mD = self.monsterDistances(wrld)
-        if mD[0] == 0 or len(mD[1]) == 0:
-            return util + 1000
-        return util + sum(mD[2]) + (sum(mD[1]) / len(mD[1])) - mD[0]
+        charx, chary = self.findChar(wrld)
+        # if mD[0] == 0 or len(mD[1]) == 0:
+        #     return util + 1000
+        return  wrld.time - self.wave[charx][chary]# + sum(mD[2]) #- mD[0] #+ (sum(mD[1]) / len(mD[1]))
     
     def monsterDistances(self, wrld):
         x, y = self.x, self.y
         goalx, goaly = self.findExit(wrld)
         monsters = self.findMonsters(wrld)
-        goalDist = len(self.astar(wrld, [x, y], [goalx, goaly]))
+        # goalDist = len(self.astar(wrld, [x, y], [goalx, goaly]))
+        goalDist = self.wave[self.x][self.y]
         monsterGoalDist = []
         monsterDistances = []
         for monster in monsters:
-            monsterDistances.append(len(self.astar(wrld, [x, y], monster)))
-            monsterGoalDist.append(len(self.astar(wrld, monster, [goalx, goaly])))
+            # monsterDistances.append(len(self.astar(wrld, [x, y], monster)))
+            monsterGoalDist.append(len(self.wave[monster[0]][monster[1]]))
         return goalDist, monsterGoalDist, monsterDistances
     
     def getActions(self, wrld):
@@ -317,6 +327,7 @@ class AICharacter(CharacterEntity):
         # print(neighbors)
         return neighbors
 
+
     #Helper function to reconstruct the path from the explored dictionary
     def reconstructPath(self, explored: dict, start: tuple[int, int], goal: tuple[int, int]) -> list[list[int, int]]:   
             """
@@ -383,6 +394,29 @@ class AICharacter(CharacterEntity):
         #         curR, curC = parent[curR][curC][0], parent[curR][curC][1]
         # return path
     
+    def generateWavefront(self, wrld, start):
+        rows, cols = wrld.height(), wrld.width()
+        wavefront = [[float('inf') for _ in range(rows)] for _ in range(cols)]
+        print(start[0],start[1],cols,rows)
+        wavefront[start[0]][start[1]] = 0
+        queue = [(0, start[0], start[1])]
+        directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
+        while queue:
+            print(queue)
+            cost, curCol,curRow = heappop(queue)
+            for direction in directions:
+                newCol, newRow = curCol + direction[0], curRow + direction[1]
+                print(newCol, newRow, "newCol, newRow")
+                if (0 <= newRow < rows) and (0 <= newCol < cols):# and (not wrld.wall_at(newCol, newRow)):
+                    if wrld.wall_at(newCol, newRow)==0:
+                        newCost = cost + 1
+                        print(newCost , wavefront[newCol][newRow])
+                        if newCost < wavefront[newCol][newRow]:
+                            wavefront[newCol][newRow] = newCost
+                            heappush(queue, (newCost, newCol, newRow))
+        return wavefront
+    
+
     def heuristic(self,p1, p2):
         return sum([abs(p2[0]-p1[0]),abs(p2[1]-p1[1])])
         
@@ -393,6 +427,14 @@ class AICharacter(CharacterEntity):
                 if wrld.exit_at(col, row):
                     exitY, exitX = row, col
         return exitY, exitX
+    
+    def findChar(self,wrld):
+        y, x = -1, -1
+        for row in range(wrld.height()):
+            for col in range(wrld.width()):
+                if wrld.characters_at(col, row):
+                    y, x = row, col
+        return y, x
     
     def findMonsters(self,wrld):
         monsters=[]
