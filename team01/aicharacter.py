@@ -31,7 +31,7 @@ class AICharacter(CharacterEntity):
             
         exitY, exitX = self.findExit(wrld)
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-        #print("Minimax move: ", self.abMinimax(wrld, 3))
+        print("Minimax v: ", self.abMinimax(wrld, 3))
         # if len(path) != 0:
         #     self.curState = self.State.EXIT
         # # # # # # # # # # #     
@@ -48,9 +48,9 @@ class AICharacter(CharacterEntity):
     
     def maxValue(self, wrld, alpha, beta, depth):
         if self.terminalState(wrld, depth):
-            print("Utility: ", self.utility(wrld))
             return self.utility(wrld)
         v = float('-inf')
+        print(self.getActions(wrld))
         for action in self.getActions(wrld):
             v = max(v, self.minValue(self.result(wrld, action), alpha, beta, depth - 1))
             if v >= beta:
@@ -106,7 +106,7 @@ class AICharacter(CharacterEntity):
         possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
         validMoves = []
         for move in possibleMoves:
-            if wrld.wall_at(move[0], move[1]) == False and self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]):
+            if  self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]) and wrld.wall_at(start[0] + move[0], start[1] + move[1]) == False:
                 validMoves.append(move)
         return validMoves
     
