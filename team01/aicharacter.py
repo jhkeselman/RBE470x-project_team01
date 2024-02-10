@@ -49,9 +49,10 @@ class AICharacter(CharacterEntity):
             # print("v",v,"time",wrld.time,"action",self.optimalAction,"wave",self.wave[self.x][self.y])
             # dx, dy = self.optimalAction[0], self.optimalAction[1]
             self.move(dx, dy)
-            #newWorld = wrld.from_world(wrld)
-            #nextWorld, _ = newWorld.next()
-            print(self.x, self.y,dx,dy, self.findChar(wrld.next()))
+            newWorld = wrld.from_world(wrld)
+            newWorld.me(self).move(dx, dy)
+            nextWorld, _ = newWorld.next()
+            print(self.x + dx, self.y + dy, self.findChar(nextWorld))
             path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
             # exit()
 
