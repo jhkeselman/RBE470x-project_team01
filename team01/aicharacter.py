@@ -33,7 +33,7 @@ class AICharacter(CharacterEntity):
         for x in range(wrld.width()):
             self.set_cell_color(x, 0, Fore.RED + Back.GREEN)
             
-        exitY, exitX = self.findExit(wrld)
+        exitX, exitY = self.findExit(wrld)
         if self.wave is None:
             self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
@@ -44,234 +44,61 @@ class AICharacter(CharacterEntity):
         if path:
             nextPoint = path.pop(1)
             dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-            # print(self.x, self.y,dx,dy, self.findChar(self.result(wrld, (dx, dy))))
-            # v, self.optimalAction = self.abMinimax(wrld, 3)
-            # print("v",v,"time",wrld.time,"action",self.optimalAction,"wave",self.wave[self.x][self.y])
-            # dx, dy = self.optimalAction[0], self.optimalAction[1]
             self.move(dx, dy)
-            newWorld = wrld.from_world(wrld)
-            newWorld.me(self).move(dx, dy)
-            nextWorld, _ = newWorld.next()
-            print(self.x + dx, self.y + dy, self.findChar(nextWorld))
-            path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-            # exit()
+            print(self.abSearch(wrld, 3, float('-inf'), float('inf')))
 
-    def abSearch(self, wrld, depth):
-        v = self.maxValue(self, wrld, depth, float('-inf'), float('inf'))
-        return v # actually return an action
+    def abSearch(self, wrld, depth, alpha, beta):
+        v = self.maxValue(wrld, depth, alpha, beta)
+        return v
     
     def maxValue(self, wrld, depth, alpha, beta):
-        if self.terminalState(wrld, depth):
+        if depth == 0:
             return self.utility(wrld)
         v = float('-inf')
-        for action in self.getActions(wrld):
-            v = max(v, self.minValue(self.result(wrld, action), depth - 1, alpha, beta))
+        for action in self.actions(wrld):
+            v = max(v, self.minValue(self.result(wrld, action), depth-1, alpha, beta))
             if v >= beta:
                 return v
             alpha = max(alpha, v)
         return v
     
     def minValue(self, wrld, depth, alpha, beta):
-        if self.terminalState(wrld, depth):
+        if depth == 0:
             return self.utility(wrld)
         v = float('inf')
-        for action in self.getMonsterActions(wrld):
-            v = min(v, self.maxValue(self.result(wrld, action), depth - 1, alpha, beta))
+        for action in self.monsterActions(wrld):
+            v = min(v, self.maxValue(self.result(wrld, action), depth-1, alpha, beta))
             if v <= alpha:
                 return v
             beta = min(beta, v)
         return v
     
-    def getActions(self, wrld):
-        x, y = self.findChar(wrld)
-        possibleMoves = [(1,0), (1, 1), (0, 1), [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
-        validMoves = []
-        for move in possibleMoves:
-            nextx, nexty = x + move[0], y + move[1]
-            if 0 <= nexty < wrld.width() and 0 <= nextx < wrld.height() and not wrld.wall_at(nextx, nexty):
-                validMoves.append((x + move[0], y + move[1]))
-        return validMoves
-    
-    def getMonsterActions(self, wrld):
-        return []
-    
-    def terminalState(self, wrld, depth):
-        return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) or wrld.explosion_at(self.x, self.y)
+    def actions(self, wrld):
+        path = self.astar(wrld, [wrld.me(self).x, wrld.me(self).y], self.findExit(wrld))
+        nextPoint = path.pop(1)
+        dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+        actions = [(dx, dy), (-dx, -dy)]
+        return actions
     
     def result(self, wrld, action):
-        self.move(action[0], action[1])
-        nextWrld, events = wrld.next()
-        return nextWrld # fix
+        newWorld = wrld.from_world(wrld)
+        newWorld.me(self).move(action[0], action[1])
+        nextWorld, _ = newWorld.next()
+        return nextWorld
+    
+    def monsterActions(self, wrld):
+        return [(0,0)]
+    
+    def terminal(self, wrld, depth):
+        if depth == 0 and wrld.exitAt(self.x, self.y) and wrld.monsters_at(self.x, self.y):
+            return True
     
     def utility(self, wrld):
         charx, chary = self.findChar(wrld)
-        return  wrld.time - self.wave[charx][chary]# + sum(mD[2]) #- mD[0] #+ (sum(mD[1]) / len(mD[1]))
-
-    # def abMinimax(self, wrld, depth):
-    #     v = self.maxValue(wrld, float('-inf'), float('inf'), depth)
-    #     return v, self.optimalAction
-    
-    # def maxValue(self, wrld, alpha, beta, depth):
-    #     if self.terminalState(wrld, depth):
-    #         return self.utility(wrld)
-    #     v = float('-inf')
-    #     for action in self.getActions(wrld):
-    #         v = max(v, self.minValue(self.result(wrld, action), alpha, beta, depth - 1))
-    #         if v >= beta:
-    #             self.optimalAction = action
-    #             return v
-    #         alpha = max(alpha, v)
-    #     self.optimalAction = action
-    #     return v
-    
-    # def minValue(self, wrld, alpha, beta, depth):
-    #     if self.terminalState(wrld, depth):
-    #         return self.utility(wrld)
-    #     v = float('inf')
-    #     for action in self.getActions(wrld):
-    #         v = min(v, self.maxValue(self.result(wrld, action), alpha, beta, depth - 1))
-    #         if v <= alpha:
-    #             self.optimalAction = action
-    #             return v
-    #         beta = min(beta, v)
-    #     self.optimalAction = action
-    #     return v
-    
-    # def result(self, wrld, action):
-    #     self.move(action[0], action[1])
-    #     nextWrld, _ = wrld.next()
-    #     return nextWrld
-
-    # def terminalState(self, wrld, depth):
-    #     return depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y)or wrld.explosion_at(self.x, self.y)
-    
-    # def utility(self, wrld):
-    #     scores = wrld.scores
-    #     util = scores[self.name]
-    #     mD = self.monsterDistances(wrld)
-    #     charx, chary = self.findChar(wrld)
-    #     # if mD[0] == 0 or len(mD[1]) == 0:
-    #     #     return util + 1000
-    #     return  wrld.time - self.wave[charx][chary]# + sum(mD[2]) #- mD[0] #+ (sum(mD[1]) / len(mD[1]))
-    
-    # def monsterDistances(self, wrld):
-    #     x, y = self.x, self.y
-    #     goalx, goaly = self.findExit(wrld)
-    #     monsters = self.findMonsters(wrld)
-    #     # goalDist = len(self.astar(wrld, [x, y], [goalx, goaly]))
-    #     goalDist = self.wave[self.x][self.y]
-    #     monsterGoalDist = []
-    #     monsterDistances = []
-    #     for monster in monsters:
-    #         # monsterDistances.append(len(self.astar(wrld, [x, y], monster)))
-    #         monsterGoalDist.append(len(self.wave[monster[0]][monster[1]]))
-    #     return goalDist, monsterGoalDist, monsterDistances
-    
-    # def getActions(self, wrld):
-    #     start = (self.x, self.y)
-    #     moves = self.getValidMoves(wrld, start)
-    #     return moves
-    
-    # def getValidMoves(self, wrld, start):
-    #     possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
-    #     validMoves = []
-    #     for move in possibleMoves:
-    #         if  self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]) and wrld.wall_at(start[0] + move[0], start[1] + move[1]) == False:
-    #             validMoves.append(move)
-    #     return validMoves
-    
-    # def withinBounds(self, wrld, x, y):
-    #     if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
-    #         return False
-    #     return True
-
-    # def expectimax(self,wrld,start,goal):
-    #     # NOTES:
-    #     # State is whole world
-    #     # Result is after movement of ALL entities
-    #     # Probability is from monster movement
-    #     # Planned structure: 
-    #     # Action: [[dx,dy],place_bomb_boolean]
-    #     # Move: [dx,dy]
-    #     # 
-
-    #     state = wrld
-    #     actions = self.getActions(state,start)
-    #     arg_max = self.argMax(actions,self.expValue) # not working yet i think, needs restructuring
-    #     return arg_max
-    
-    # def expValue(self,wrld,start,goal):
-    #     # if terminal state return utility
-    #     # if self.terminalState(wrld,start):
-    #     #     return self.stateValue(wrld)
-
-    #     # for each monster move and their probabilities, get value 
-        
-
-    #     v = 0
-    #     # for action in self.getActions(wrld,start):
-    #     #     p = 1/len(self.getActions(wrld,start))
-    #     #     v += p*self.maxValue(self.result(wrld, action, goal))
-    #     return v
-    
-    # # def terminalState(self, wrld, start):
-    # #     if wrld.monsters_at(start[0], start[1]) or wrld.explosion_at(start[0], start[1]) or wrld.exit_at(start[0], start[1]) == True:
-    # #         return True
-    # #     return False
-        
-    # def stateValue(self, state):
-    #     # Evaluate util of a state
-    #     return 0
-    
-    # def argMax(self,args,util_function):
-    #     max_val = 0
-    #     arg_max = None
-    #     for arg in args:
-    #         val = util_function(*arg)
-    #         if(val > max_val):
-    #             max_val = val
-    #             arg_max = arg
-    #     return arg_max
-
-    # def maxValue(self,wrld,start, goal):
-    #     # if terminal state return utility
-    #     # if self.terminalState(wrld,start):
-    #     #     return self.stateValue(wrld)
-    #     v = float('-inf')
-    #     for action in self.getActions(wrld,start):
-    #         v = max(v, self.expValue(self.result(wrld, action, goal)))
-    #     return v
-    
-    # def result(self,wrld,action,start,goal):
-    #     self.move(action[0],action[1])
-    #     if action[2]:
-    #         self.place_bomb()
-    #     nextWrld = wrld.sensedWorld.next()
-    #     return nextWrld, start, goal
-    
-    # def getActions(self, wrld, start):
-    #     moves = self.getValidMoves(wrld, start, "extract position from world")
-    #     if self.findBomb(wrld) == None:
-    #         for move in moves:
-    #             moves.append((move, True))
-    #     return moves
-    
-    # def getValidMoves(self, wrld, start):
-    #     possibleMoves = [(1,0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
-    #     validMoves = []
-    #     for move in possibleMoves:
-    #         if wrld.wall_at(move[0], move[1]) == False and self.withinBounds(wrld, move[0]+start[0], move[1]+start[1]):
-    #             validMoves.append(move, False)
-    #     return validMoves
-    
-    # def withinBounds(self, wrld, x, y):
-    #     if x < 0 or x >= wrld.width() or y < 0 or y >= wrld.height():
-    #         return False
-    #     return True
+        return wrld.time - self.wave[charx][chary]
         
     def astar(self, wrld, start, goal):
         path = []
-        #steps = 0
         found = False
 
         pq=PriorityQueue() #
@@ -280,7 +107,6 @@ class AICharacter(CharacterEntity):
         # print(start,goal)
         
         while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
-            #steps+=1
             element=pq.get()#pulling the first item added to the q which will in practice be the lowest level for bfs exploration
             exploring=element[0]
             g=element[2]
@@ -348,39 +174,6 @@ class AICharacter(CharacterEntity):
                 if wrld.wall_at(cellx-1,celly+1)==0:
                     neighbors.append((cellx-1,celly+1))
 
-        # cellr=cell[0]
-        # cellc=cell[1]
-        # neighbors=[]
-        # rows, cols = wrld.height(), wrld.width()
-        # if wrld.wall_at(cellr,cellc)==1:
-        #     return neighbors
-        # if cellc<cols-1:
-        #     if wrld.wall_at(cellr,cellc+1)==0:
-        #         neighbors.append((cellr,cellc+1))
-        # if cellr<rows-1:
-        #     if wrld.wall_at(cellr+1,cellc)==0:
-        #         neighbors.append((cellr+1,cellc))
-        #     if cellc>0:
-        #         if wrld.wall_at(cellr+1,cellc-1)==0:
-        #             neighbors.append((cellr+1,cellc-1)) 
-        #     if cellc<cols-1:
-        #         if wrld.wall_at(cellr+1,cellc+1)==0:
-        #             neighbors.append((cellr+1,cellc+1))
-        # if cellc>0:
-        #     if wrld.wall_at(cellr,cellc-1)==0:
-        #         neighbors.append((cellr,cellc-1))
-        # if cellr>0:
-        #     if wrld.wall_at(cellr-1,cellc)==0:
-        #         neighbors.append((cellr-1,cellc))
-        #     if cellc>0:
-        #         if wrld.wall_at(cellr-1,cellc-1)==0:
-        #             neighbors.append((cellr-1,cellc-1)) 
-        #     if cellc<cols-1:
-        #         if wrld.wall_at(cellr-1,cellc+1)==0:
-        #             neighbors.append((cellr-1,cellc+1))
-
-        
-        # print(neighbors)
         return neighbors
 
 
@@ -404,69 +197,22 @@ class AICharacter(CharacterEntity):
                     # This should never happen given the way the algorithm is implemented
                     return []
             path = [list(start)] + path
-            # print(path)
             return path
-
-        # path = []
-        # found = False
-        # rows, cols = wrld.height(), wrld.width()
-        # visited = [[False for _ in range(cols)] for _ in range(rows)]
-        # costs = [[float('inf') for _ in range(cols)] for _ in range(rows)]
-        # parent = [[None for _ in range(cols)] for _ in range(rows)]
-        # parent[start[0]][start[1]] = (-1,-1)
-        # directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
-        # queue = [(0 + self.heuristic(start, goal), 0, start[0], start[1])]
-        # costs[start[0]][start[1]] = 0
-
-        # while queue:
-        #     _, cost, curRow, curCol = heappop(queue)
-            
-        #     if [curRow, curCol] == goal:
-        #         found = True
-        #         break
-
-        #     for direction in directions:
-        #         newRow, newCol = curRow + direction[0], curCol + direction[1]
-        #         if 0 <= newRow < rows and 0 <= newCol < cols and not visited[newRow][newCol] and not wrld.wall_at(newCol, newRow):
-        #             monstersCost=0
-        #             monsters=self.findMonster(wrld)
-        #             for monster in monsters:
-                        
-        #                 dist=self.heuristic((newRow, newCol), monster)
-        #                 if dist<=3:
-        #                     monstersCost+=dist
-        #             newCost = cost + 1+monstersCost 
-        #             if newCost < costs[newRow][newCol]:
-        #                 costs[newRow][newCol] = newCost
-        #                 prio = newCost + self.heuristic((newRow, newCol), goal)
-        #                 parent[newRow][newCol] = (curRow, curCol)
-        #                 visited[newRow][newCol] = True
-        #                 heappush(queue, (prio, newCost, newRow, newCol))
-
-        # if found:
-        #     curR, curC = goal[0], goal[1]
-        #     while curR != -1 and curC != -1:
-        #         path.insert(0,[curR, curC])
-        #         curR, curC = parent[curR][curC][0], parent[curR][curC][1]
-        # return path
+    
     
     def generateWavefront(self, wrld, start):
         rows, cols = wrld.height(), wrld.width()
         wavefront = [[float('inf') for _ in range(rows)] for _ in range(cols)]
-        print(start[0],start[1],cols,rows)
         wavefront[start[0]][start[1]] = 0
         queue = [(0, start[0], start[1])]
         directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
         while queue:
-            print(queue)
             cost, curCol,curRow = heappop(queue)
             for direction in directions:
                 newCol, newRow = curCol + direction[0], curRow + direction[1]
-                print(newCol, newRow, "newCol, newRow")
                 if (0 <= newRow < rows) and (0 <= newCol < cols):# and (not wrld.wall_at(newCol, newRow)):
                     if wrld.wall_at(newCol, newRow)==0:
                         newCost = cost + 1
-                        print(newCost , wavefront[newCol][newRow])
                         if newCost < wavefront[newCol][newRow]:
                             wavefront[newCol][newRow] = newCost
                             heappush(queue, (newCost, newCol, newRow))
@@ -482,7 +228,7 @@ class AICharacter(CharacterEntity):
             for col in range(wrld.width()):
                 if wrld.exit_at(col, row):
                     exitY, exitX = row, col
-        return exitY, exitX
+        return exitX, exitY
     
     def findChar(self,wrld):
         y, x = -1, -1
