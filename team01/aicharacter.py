@@ -95,7 +95,17 @@ class AICharacter(CharacterEntity):
     
     def utility(self, wrld):
         charx, chary = self.findChar(wrld)
-        return wrld.time - self.wave[charx][chary]
+        monsterCost = 0
+        monsters = self.findMonsters(wrld)
+        for monster in monsters:
+            dist = self.openDist((charx, chary), monster)
+            if dist <= 3:
+                monsterCost += 2*(4-dist)
+        monsterDistToGoal=min([self.wave(monster[0], monster[1]) for monster in monsters])
+        selfDistToGoal=self.wave[charx][chary]
+        if selfDistToGoal > monsterDistToGoal:
+            monsterCost += 5
+        return wrld.time - selfDistToGoal - monsterCost
         
     def astar(self, wrld, start, goal):
         path = []
@@ -221,6 +231,9 @@ class AICharacter(CharacterEntity):
 
     def heuristic(self,p1, p2):
         return sum([abs(p2[0]-p1[0]),abs(p2[1]-p1[1])])
+    
+    def openDist(self,p1,p2):
+        return max(abs(p2[0]-p1[0]),abs(p2[1]-p1[1]))
         
     def findExit(self,wrld):
         exitY, exitX = 0, 0
