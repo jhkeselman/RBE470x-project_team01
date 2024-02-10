@@ -60,7 +60,7 @@ class AICharacter(CharacterEntity):
             return self.utility(wrld)
         v = float('-inf')
         for action in self.actions(wrld):
-            v = max(v, self.minValue(self.result(wrld, action), depth-1, alpha, beta))
+            v = max(v, self.maxValue(self.result(wrld, action), depth-1, alpha, beta))
             if v > alpha and depth == self.depthMax:
                 self.optimalAction = action
             if v >= beta:
@@ -128,21 +128,23 @@ class AICharacter(CharacterEntity):
         charx, chary = self.findChar(wrld)
         monsterCost = 0
         monsters = self.findMonsters(wrld)
-        monDist=float('inf')
-        # monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
-        for monster in monsters:
-            dist = len(self.astar(wrld,(charx, chary), monster))
-            if dist <= 3:
-                monsterCost += (2*(4-dist))**2
-            if dist<monDist:
-                monDist=dist
-        monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
         selfDistToGoal=self.wave[charx][chary]
-        if selfDistToGoal > monsterDistToGoal and monDist<=2:
-            monsterCost *=4
-            # selfDistToGoal+=20
-        elif selfDistToGoal < monsterDistToGoal:
-            monsterCost -= 10
+        monDist=float('inf')
+        if monsters:
+            # monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
+            for monster in monsters:
+                dist = len(self.astar(wrld,(charx, chary), monster))
+                if dist <= 3:
+                    monsterCost += (2*(4-dist))**2
+                if dist<monDist:
+                    monDist=dist
+            monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
+            
+            if selfDistToGoal > monsterDistToGoal and monDist<=2:
+                monsterCost *=4
+                # selfDistToGoal+=20
+            elif selfDistToGoal < monsterDistToGoal:
+                monsterCost -= 10
         return wrld.time - selfDistToGoal - monsterCost
         
     def astar(self, wrld, start, goal):
