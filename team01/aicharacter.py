@@ -25,6 +25,7 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
+    depthMax = 3
     wave=None
 
     def do(self, wrld):
@@ -42,14 +43,15 @@ class AICharacter(CharacterEntity):
         # # # # # # # # # # #     
         # if self.curState == self.State.EXIT:
         if path:
-            nextPoint = path.pop(1)
-            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            # nextPoint = path.pop(1)
+            # dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            # self.move(dx, dy)
+            dx, dy = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
             self.move(dx, dy)
-            print(self.abSearch(wrld, 3, float('-inf'), float('inf')))
 
     def abSearch(self, wrld, depth, alpha, beta):
         v = self.maxValue(wrld, depth, alpha, beta)
-        return v
+        return self.optimalAction
     
     def maxValue(self, wrld, depth, alpha, beta):
         if depth == 0:
@@ -57,6 +59,8 @@ class AICharacter(CharacterEntity):
         v = float('-inf')
         for action in self.actions(wrld):
             v = max(v, self.minValue(self.result(wrld, action), depth-1, alpha, beta))
+            if v > alpha and depth == self.depthMax:
+                self.optimalAction = action
             if v >= beta:
                 return v
             alpha = max(alpha, v)
@@ -83,6 +87,9 @@ class AICharacter(CharacterEntity):
     def result(self, wrld, action):
         newWorld = wrld.from_world(wrld)
         newWorld.me(self).move(action[0], action[1])
+        ex, ey = self.findExit(wrld)
+        if newWorld.me(self).x+action[0] == ex and  newWorld.me(self).y+action[1] == ey:
+            return wrld
         nextWorld, _ = newWorld.next()
         return nextWorld
     
