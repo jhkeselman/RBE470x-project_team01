@@ -108,7 +108,7 @@ class AICharacter(CharacterEntity):
             dist = self.openDist((charx, chary), monster)
             if dist <= 3:
                 monsterCost += 2*(4-dist)
-        monsterDistToGoal=min([self.wave(monster[0], monster[1]) for monster in monsters])
+        monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
         selfDistToGoal=self.wave[charx][chary]
         if selfDistToGoal > monsterDistToGoal:
             monsterCost += 5
@@ -263,7 +263,7 @@ class AICharacter(CharacterEntity):
         for row in range(wrld.height()):
             for col in range(wrld.width()):
                 if wrld.monsters_at(col, row):
-                    monsters.append((row, col))
+                    monsters.append((col, row))
         return monsters
     
     def findBomb(self,wrld):
