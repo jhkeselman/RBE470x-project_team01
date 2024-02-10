@@ -88,9 +88,10 @@ class AICharacter(CharacterEntity):
             dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
             actions = [(dx, dy), (-dx, -dy)]
             monsters=self.findMonsters(wrld)
-            monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
-            if monsters and monDist<=3:
-                actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
+            if monsters:
+                monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
+                if monsters and monDist<=3:
+                    actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
             return actions
         except:
             return [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
