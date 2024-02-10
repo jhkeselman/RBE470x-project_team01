@@ -54,6 +54,8 @@ class AICharacter(CharacterEntity):
         return self.optimalAction
     
     def maxValue(self, wrld, depth, alpha, beta):
+        if wrld == None:
+            return float('-inf')
         if depth == 0:
             return self.utility(wrld)
         v = float('-inf')
@@ -67,6 +69,8 @@ class AICharacter(CharacterEntity):
         return v
     
     def minValue(self, wrld, depth, alpha, beta):
+        if wrld == None:
+            return float('-inf')
         if depth == 0:
             return self.utility(wrld)
         v = float('inf')
@@ -78,23 +82,43 @@ class AICharacter(CharacterEntity):
         return v
     
     def actions(self, wrld):
-        path = self.astar(wrld, [wrld.me(self).x, wrld.me(self).y], self.findExit(wrld))
-        nextPoint = path.pop(1)
-        dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-        actions = [(dx, dy), (-dx, -dy)]
-        return actions
+        try:
+            path = self.astar(wrld, [wrld.me(self).x, wrld.me(self).y], self.findExit(wrld))
+            nextPoint = path.pop(1)
+            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            actions = [(dx, dy), (-dx, -dy)]
+            monsters=self.findMonsters(wrld)
+            monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
+            if monsters and monDist<=3:
+                actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
+            return actions
+        except:
+            return [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
     
     def result(self, wrld, action):
-        newWorld = wrld.from_world(wrld)
-        newWorld.me(self).move(action[0], action[1])
-        ex, ey = self.findExit(wrld)
-        if newWorld.me(self).x+action[0] == ex and  newWorld.me(self).y+action[1] == ey:
-            return wrld
-        nextWorld, _ = newWorld.next()
-        return nextWorld
+        try:
+            newWorld = wrld.from_world(wrld)
+            newWorld.me(self).move(action[0], action[1])
+            ex, ey = self.findExit(wrld)
+            if newWorld.me(self).x+action[0] == ex and  newWorld.me(self).y+action[1] == ey:
+                return wrld
+            nextWorld, _ = newWorld.next()
+            return nextWorld
+        except:
+            return None
     
     def monsterActions(self, wrld):
-        return [(0,0)]
+        return [(0, 0)]
+        # charx, chary = self.findChar(wrld)
+        # monsters=self.findMonsters(wrld)
+        # actions=[]
+        # for monster in monsters:
+        #     path = self.astar(wrld, monster, (charx, chary))
+        #     if path:
+        #         nextPoint = path.pop(1)
+        #         dx, dy = nextPoint[0] - monster[0], nextPoint[1] - monster[1]
+        #         actions.append((dx, dy))
+        # return actions
     
     def terminal(self, wrld, depth):
         if depth == 0 and wrld.exitAt(self.x, self.y) and wrld.monsters_at(self.x, self.y):
@@ -104,14 +128,21 @@ class AICharacter(CharacterEntity):
         charx, chary = self.findChar(wrld)
         monsterCost = 0
         monsters = self.findMonsters(wrld)
+        monDist=float('inf')
+        # monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
         for monster in monsters:
-            dist = self.openDist((charx, chary), monster)
+            dist = len(self.astar(wrld,(charx, chary), monster))
             if dist <= 3:
-                monsterCost += 2*(4-dist)
+                monsterCost += (2*(4-dist))**2
+            if dist<monDist:
+                monDist=dist
         monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
         selfDistToGoal=self.wave[charx][chary]
-        if selfDistToGoal > monsterDistToGoal:
-            monsterCost += 5
+        if selfDistToGoal > monsterDistToGoal and monDist<=2:
+            monsterCost *=4
+            # selfDistToGoal+=20
+        elif selfDistToGoal < monsterDistToGoal:
+            monsterCost -= 10
         return wrld.time - selfDistToGoal - monsterCost
         
     def astar(self, wrld, start, goal):

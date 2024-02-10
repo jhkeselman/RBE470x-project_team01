@@ -27,4 +27,4 @@ g.add_character(AICharacter("me", # name
 ))
 
 # Run!
-g.go()
+g.go(1)
