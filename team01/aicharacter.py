@@ -76,8 +76,6 @@ class AICharacter(CharacterEntity):
                     self.goForwards=False
                 
             else:
-<<<<<<< HEAD
-=======
                 monsters=self.findMonsters(wrld)
                 if monsters:
                     closestMonster=(-1,-1)
@@ -91,7 +89,6 @@ class AICharacter(CharacterEntity):
                     # else:
                     #     self.goForwards=False
 
->>>>>>> 6447a92c263fd12bdb44eab5f257595d46503623
                 if self.goForwards:
                     move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
                     # Move
@@ -104,13 +101,8 @@ class AICharacter(CharacterEntity):
                     dx, dy = self.moves.pop()
                     self.move(-dx, -dy)
                     print("backtrack")
-<<<<<<< HEAD
                     
                     
-=======
-                    
-                    
->>>>>>> 6447a92c263fd12bdb44eab5f257595d46503623
                 except:
                     self.goForwards=True
                     move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
@@ -118,18 +110,7 @@ class AICharacter(CharacterEntity):
                     dx, dy = move
                     self.move(dx, dy)
                     self.moves.append((dx,dy))
-<<<<<<< HEAD
-                    
-                
-                if self.goForwards:
-                    move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                    # Move
-                    dx, dy = move
-                    self.move(dx, dy)
-                    self.moves.append((dx,dy))
-=======
                         
->>>>>>> 6447a92c263fd12bdb44eab5f257595d46503623
                 
             
 
