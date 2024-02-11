@@ -10,7 +10,7 @@ We chose to use A* to navigate the game world, as it is an optimal algorithm for
 
 Our minimax implementation is used to determine the best move for the character to make, based on the current game state. We chose to use minimax, with alpha-beta pruning, due to its relative simplicity to implement and ability to handle large decisions trees through pruning. ...
 
-Finally, we used a set of helper function to find specific items in the world. This included the character's current position, the goal's position, the positions of all monsters, and the position of a bomb, if present. These functions helped us define the exact state of the world, and were designed to allow easy usage with future world states found through `SensedWorld.next()`.
+Finally, we used a set of helper function to find specific items in the world. This included the character's current position, the goal's position, the positions of all monsters, and the position of a bomb, if present. These functions helped us define the exact state of the world, and were designed to allow easy usage with future world states found with `SensedWorld.next()`.
 ## 2. Code Breakdown
 ## 3. Experimental Evaluation
 To test our code for project 1, we ran a series of 10 tests for each variant, with different seeds for each test. For each test, we recorded whether or not the character successfully reached the goal, and the score of the character when the run terminated. We then averaged these scores to get a sense of how well our code performed. The results of these tests, as well as some brief analysis, are shown below.
