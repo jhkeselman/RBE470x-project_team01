@@ -25,7 +25,7 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
-    depthMax = 7
+    depthMax = 5
     wave=None
     moves=[]
     wasBomb=False
@@ -40,9 +40,25 @@ class AICharacter(CharacterEntity):
             self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
         print(self.moves)
+        skipAB=False
         if path:
-            # Get best move
             if not self.findBomb(wrld):
+                monsters=self.findMonsters(wrld)
+                if monsters!=[]:
+                    closestMonster=(-1,-1)
+                    for monster in monsters:
+                        if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
+                            closestMonster=monster
+                    if len(self.astar(wrld,self.findChar(wrld),closestMonster,False))<=5:
+                        self.place_bomb()
+                        self.wasBomb=True
+                        self.goForwards=False
+                        skipAB=True
+                        print("bomb","skiping AB")
+
+            # Get best move
+            if (not self.findBomb(wrld) )and not skipAB:
+                print("the reg")
                 monsters=self.findMonsters(wrld)
                 if not monsters:
                     nextPoint = path.pop(1)
@@ -52,7 +68,7 @@ class AICharacter(CharacterEntity):
                 else:
                     selfDistToGoal=self.wave[self.x][self.y]
                     monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
-                    if selfDistToGoal < monsterDistToGoal - 1:
+                    if selfDistToGoal < monsterDistToGoal:
                         nextPoint = path.pop(1)
                         dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                         self.move(dx, dy)
@@ -72,16 +88,16 @@ class AICharacter(CharacterEntity):
                     self.wasBomb=True
                     self.goForwards=False
 
-                monsters=self.findMonsters(wrld)
-                if monsters:
-                    closestMonster=(-1,-1)
-                    for monster in monsters:
-                        if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
-                            closestMonster=monster
-                if len(self.astar(wrld,self.findChar(wrld),closestMonster))<=4:
-                    self.place_bomb()
-                    self.wasBomb=True
-                    self.goForwards=False
+                # monsters=self.findMonsters(wrld)
+                # if monsters:
+                #     closestMonster=(-1,-1)
+                #     for monster in monsters:
+                #         if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
+                #             closestMonster=monster
+                # if len(self.astar(wrld,self.findChar(wrld),closestMonster))<=4:
+                #     self.place_bomb()
+                #     self.wasBomb=True
+                #     self.goForwards=False
                 
             else:
                 monsters=self.findMonsters(wrld)
@@ -92,7 +108,7 @@ class AICharacter(CharacterEntity):
                             closestMonster=monster
                     monsterDistToGoal=self.wave[closestMonster[0]][closestMonster[1]]
                     selfDistToGoal=self.wave[self.x][self.y]
-                    if selfDistToGoal < monsterDistToGoal-2:
+                    if selfDistToGoal < monsterDistToGoal:
                         self.goForwards=True
                     else:
                         self.goForwards=False
@@ -105,19 +121,19 @@ class AICharacter(CharacterEntity):
                     self.moves.append((dx,dy))
                     return
                 
-                if (self.x,self.y)!=self.start:# self.wave[self.x][self.y]>5:
-                    path = self.astar(wrld, [self.x, self.y], self.start)
-                    if path:
-                        nextPoint = path.pop(1)
-                        dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                    else:
-                        self.goForwards=True
-                    # dx, dy = self.moves.pop()
-                    # self.move(-dx, -dy)
-                    # print("backtrack",-dx,-dy)
-                    
+                # if (self.x,self.y)!=self.start:# self.wave[self.x][self.y]>5:
+                #     path = self.astar(wrld, [self.x, self.y], self.start,False)
+                #     if path:
+                #         nextPoint = path.pop(1)
+                #         dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+                #         self.move(dx, dy)
+                #         self.moves.append((dx,dy))
+                #     else:
+                #         self.goForwards=True
+                if self.moves:
+                    dx, dy = self.moves.pop()
+                    self.move(-dx, -dy)
+                    print("backtrack",-dx,-dy)
                     
                 else:
                     self.goForwards=True
@@ -185,12 +201,12 @@ class AICharacter(CharacterEntity):
             path = self.astar(wrld, [wrld.me(self).x, wrld.me(self).y], self.findExit(wrld))
             nextPoint = path.pop(1)
             dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-            actions = [(dx, dy), (-dx, -dy)]
+            actions = [(dx, dy), (-dx, -dy)]#,(0,0)]
             monsters=self.findMonsters(wrld)
             if monsters:
                 monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
                 if monsters and monDist<=3:
-                    actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1),(0,0)]
+                    actions=self.getNeighbors(wrld,(wrld.me(self).x, wrld.me(self).y))
 
             new_actions = []
             for action in actions:
@@ -201,7 +217,7 @@ class AICharacter(CharacterEntity):
                     new_actions.append((actions[i], 1))
             return new_actions
         except Exception as e:
-            return [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1),(0,0)]
+            return [(1,1),(-1,-1),(1,-1),(-1,1)]
     
     def result(self, wrld, action, mode):
         try:
@@ -302,7 +318,7 @@ class AICharacter(CharacterEntity):
                 return 7000
         return wrld.time - selfDistToGoal - monsterCost + bombPoints
         
-    def astar(self, wrld, start, goal):
+    def astar(self, wrld, start, goal, withMonster=True):
         path = []
         found = False
 
@@ -328,11 +344,12 @@ class AICharacter(CharacterEntity):
                     monstersCost=0
                     if neighbor ==  bombs:
                         monstersCost+=1000
-                    monsters=self.findMonsters(wrld)
-                    for monster in monsters:
-                        dist=self.heuristic((neighbor[0], neighbor[1]), monster)
-                        if dist<=3:
-                            monstersCost+=2*(4-dist)
+                    if withMonster:
+                        monsters=self.findMonsters(wrld)
+                        for monster in monsters:
+                            dist=self.heuristic((neighbor[0], neighbor[1]), monster)
+                            if dist<=3:
+                                monstersCost+=2*(4-dist)
                     f=g+1+self.heuristic(neighbor,goal)+monstersCost#heuristic is the manhattan distance and is used cause this is A*
                 
                     pq.put((neighbor,exploring,g+1),f)
