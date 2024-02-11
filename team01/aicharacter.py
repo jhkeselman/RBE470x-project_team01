@@ -25,14 +25,11 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
-    depthMax = 3
+    depthMax = 10
     wave=None
 
     def do(self, wrld):
         
-        # if self.curState == self.State.SEARCH:
-        for x in range(wrld.width()):
-            self.set_cell_color(x, 0, Fore.RED + Back.GREEN)
             
         exitX, exitY = self.findExit(wrld)
         if self.wave is None:
@@ -51,6 +48,7 @@ class AICharacter(CharacterEntity):
 
     def abSearch(self, wrld, depth, alpha, beta):
         v = self.maxValue(wrld, depth, alpha, beta)
+        self.set_cell_color(*self.optimalAction, Fore.GREEN + Back.GREEN)
         return self.optimalAction
     
     def maxValue(self, wrld, depth, alpha, beta):
@@ -59,8 +57,12 @@ class AICharacter(CharacterEntity):
         if depth == 0:
             return self.utility(wrld)
         v = float('-inf')
+        try:
+            self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.RED + Back.RED)
+        except:
+            pass
         for action in self.actions(wrld):
-            v = max(v, self.maxValue(self.result(wrld, action), depth-1, alpha, beta))
+            v = max(v, self.minValue(self.result(wrld, action), depth-1, alpha, beta)) # was maxValue
             if v > alpha and depth == self.depthMax:
                 self.optimalAction = action
             if v >= beta:
@@ -74,6 +76,10 @@ class AICharacter(CharacterEntity):
         if depth == 0:
             return self.utility(wrld)
         v = float('inf')
+        try:
+            self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.MAGENTA + Back.MAGENTA)
+        except:
+            pass
         for action in self.monsterActions(wrld):
             v = min(v, self.maxValue(self.result(wrld, action), depth-1, alpha, beta))
             if v <= alpha:
