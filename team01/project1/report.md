@@ -11,15 +11,49 @@ We chose to use A* to navigate the game world, as it is an optimal algorithm for
 Our minimax implementation is used to determine the best move for the character to make, based on the current game state. We chose to use minimax, with alpha-beta pruning, due to its relative simplicity to implement and ability to handle large decisions trees through pruning. ...
 
 Finally, we used a set of helper function to find specific items in the world. This included the character's current position, the goal's position, the positions of all monsters, and the position of a bomb, if present. These functions helped us define the exact state of the world, and were designed to allow easy usage with future world states found with `SensedWorld.next()`.
+
 ## 2. Code Breakdown
 This section will dive deeper into specific pieces of our code. We will discuss the structure of our state machine, our A* implementation, our minimax implementation, and our helper functions.
 ### 2.1 State Machine
 ### 2.2 A* Implementation
+Our A* implemention is generally standard, with some small modifications to the priority calculation. The basic structure of our A* algorithm is as follows:
+```
+def astar(self, world, start, goal):
+    path = []
+    found = False
+    queue = priority queue sorted by lowest cost to move there
+    add start to queue with priority 0
+    explored = dictionary of explored nodes
+    bombs = location of bombs in world
+    while queue and we haven't found the goal:
+        current element = get next item from queue
+        add current element location to explored
+        get the cost of the current element
+        if current element is the goal:
+            found = true
+            break
+        for each neighbor of the current element:
+            if neighbor is not in explored or cost to get to neighbor is better than existing cost to neighbor:
+                monsterCost = 0
+                if neighbor is a bomb:
+                    monsterCost += 1000 to avoid bombs
+                monsters = monsters in world
+                for monster in monsters:
+                    dist = heuristic distance between neighbor and monster
+                    if distance less than or equal to 3:
+                        add weighted distance to monsterCost
+                add neighbor to queue with priority that includes cost, heuristic, and monsterCost
+    if found is true:
+        return a reconstructed path
+    else:
+        return an empty path
+```
+This A* implementation also uses three accompanying helper methods. The first, `getNeighbors`, returns the valid 8-neighborhood neighbors of a grid cell, without invalid neighbors caused by grid edges or walls. The second, `reconstructPath`, reconstructs the path created by the A* algorithm using the `explored` dictionary. The third, `heuristic`, calculates the heuristic distance between two points, in this case using Manhattan Distance due to its admissibility and consistency. Our A* implementation was designed to give us paths that were optimal not only for distance to the goal, but also for avoiding enemies. This allowed us to use the A* algorithm to reduce the number of branches to explore in our minimax, as we were naturally avoiding very suboptimal paths by attempting to maintain a safe distance from all monsters naturally. 
 ### 2.3 Minimax Implementation
 ### 2.4 Helper Functions
 Our four *find* functions all follow a similar structure, shown with the following pseudocode:
 ```
-def findItem(self, item):
+def findItem(self, world):
     loop through world rows
         loop through world columns
             if row and column contain item
@@ -27,6 +61,7 @@ def findItem(self, item):
     return nothing if item not found 
 ```
 This basic structure has slight modifications for each specific item, with each type requiring different return values when not found. The `findMonsters` method uses an array to store the position of monsters, rather than returning directly, as there may be more than one monster present in the world. These functions are also versatile, allowing us to search through either the actual world state or the state of a copied world, which is useful for our minimax implementation.
+
 ## 3. Experimental Evaluation
 To test our code for project 1, we ran a series of 10 tests for each variant, with different seeds for each test. For each test, we recorded whether or not the character successfully reached the goal, and the score of the character when the run terminated. We then averaged these scores to get a sense of how well our code performed. The results of these tests, as well as some brief analysis, are shown below.
 
