@@ -30,15 +30,16 @@ class AICharacter(CharacterEntity):
     moves=[]
     wasBomb=False
     goForwards=False
-    
+    start=None
 
     def do(self, wrld):
             
         exitX, exitY = self.findExit(wrld)
         if self.wave is None:
+            self.start=(self.x,self.y)
             self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-
+        print(self.moves)
         if path:
             # Get best move
             if not self.findBomb(wrld):
@@ -70,7 +71,14 @@ class AICharacter(CharacterEntity):
                     self.place_bomb()
                     self.wasBomb=True
                     self.goForwards=False
-                if len(self.astar(wrld,self.findChar(wrld),self.findMonsters(wrld)[0]))<=4:
+
+                monsters=self.findMonsters(wrld)
+                if monsters:
+                    closestMonster=(-1,-1)
+                    for monster in monsters:
+                        if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
+                            closestMonster=monster
+                if len(self.astar(wrld,self.findChar(wrld),closestMonster))<=4:
                     self.place_bomb()
                     self.wasBomb=True
                     self.goForwards=False
@@ -84,10 +92,10 @@ class AICharacter(CharacterEntity):
                             closestMonster=monster
                     monsterDistToGoal=self.wave[closestMonster[0]][closestMonster[1]]
                     selfDistToGoal=self.wave[self.x][self.y]
-                    if selfDistToGoal < monsterDistToGoal:
+                    if selfDistToGoal < monsterDistToGoal-2:
                         self.goForwards=True
-                    # else:
-                    #     self.goForwards=False
+                    else:
+                        self.goForwards=False
 
                 if self.goForwards:
                     move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
@@ -97,13 +105,21 @@ class AICharacter(CharacterEntity):
                     self.moves.append((dx,dy))
                     return
                 
-                try:# self.wave[self.x][self.y]>5:
-                    dx, dy = self.moves.pop()
-                    self.move(-dx, -dy)
-                    print("backtrack")
+                if (self.x,self.y)!=self.start:# self.wave[self.x][self.y]>5:
+                    path = self.astar(wrld, [self.x, self.y], self.start)
+                    if path:
+                        nextPoint = path.pop(1)
+                        dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+                        self.move(dx, dy)
+                        self.moves.append((dx,dy))
+                    else:
+                        self.goForwards=True
+                    # dx, dy = self.moves.pop()
+                    # self.move(-dx, -dy)
+                    # print("backtrack",-dx,-dy)
                     
                     
-                except:
+                else:
                     self.goForwards=True
                     move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
                     # Move
@@ -342,28 +358,28 @@ class AICharacter(CharacterEntity):
             return neighbors
         
         if celly<rows-1:
-            if wrld.wall_at(cellx,celly+1)==0 and wrld.explosion_at(cellx,celly+1)==None :
+            if wrld.wall_at(cellx,celly+1)==0 and wrld.explosion_at(cellx,celly+1) is None :
                 neighbors.append((cellx,celly+1))
         if cellx<cols-1:
-            if wrld.wall_at(cellx+1,celly)==0 and wrld.explosion_at(cellx+1,celly)==None :
+            if wrld.wall_at(cellx+1,celly)==0 and wrld.explosion_at(cellx+1,celly) is None :
                 neighbors.append((cellx+1,celly))
             if celly>0:
-                if wrld.wall_at(cellx+1,celly-1)==0 and wrld.explosion_at(cellx+1,celly-1)==None :
+                if wrld.wall_at(cellx+1,celly-1)==0 and wrld.explosion_at(cellx+1,celly-1) is None :
                     neighbors.append((cellx+1,celly-1)) 
             if celly<rows-1:
-                if wrld.wall_at(cellx+1,celly+1)==0 and wrld.explosion_at(cellx+1,celly+1)==None :
+                if wrld.wall_at(cellx+1,celly+1)==0 and wrld.explosion_at(cellx+1,celly+1) is None :
                     neighbors.append((cellx+1,celly+1))
         if celly>0:
-            if wrld.wall_at(cellx,celly-1)==0 and wrld.explosion_at(cellx,celly-1)==None :
+            if wrld.wall_at(cellx,celly-1)==0 and wrld.explosion_at(cellx,celly-1) is None :
                 neighbors.append((cellx,celly-1))
         if cellx>0:
-            if wrld.wall_at(cellx-1,celly)==0 and wrld.explosion_at(cellx-1,celly)==None :
+            if wrld.wall_at(cellx-1,celly)==0 and wrld.explosion_at(cellx-1,celly) is None :
                 neighbors.append((cellx-1,celly))
             if celly>0:
-                if wrld.wall_at(cellx-1,celly-1)==0 and wrld.explosion_at(cellx-1,celly-1)==None :
+                if wrld.wall_at(cellx-1,celly-1)==0 and wrld.explosion_at(cellx-1,celly-1) is None :
                     neighbors.append((cellx-1,celly-1)) 
             if celly<rows-1:
-                if wrld.wall_at(cellx-1,celly+1)==0 and wrld.explosion_at(cellx-1,celly+1)==None :
+                if wrld.wall_at(cellx-1,celly+1)==0 and wrld.explosion_at(cellx-1,celly+1) is None :
                     neighbors.append((cellx-1,celly+1))
         # print(neighbors)
         return neighbors
