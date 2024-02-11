@@ -76,36 +76,41 @@ class AICharacter(CharacterEntity):
                     self.goForwards=False
                 
             else:
-                    if self.goForwards:
-                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                        # Move
-                        dx, dy = move
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        return
-                    
-                    try:# self.wave[self.x][self.y]>5:
-                        dx, dy = self.moves.pop()
-                        self.move(-dx, -dy)
-                        print("backtrack")
-                        
-                        
-                    except:
+                monsters=self.findMonsters(wrld)
+                if monsters:
+                    closestMonster=(-1,-1)
+                    for monster in monsters:
+                        if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
+                            closestMonster=monster
+                    monsterDistToGoal=self.wave[closestMonster[0]][closestMonster[1]]
+                    selfDistToGoal=self.wave[self.x][self.y]
+                    if selfDistToGoal < monsterDistToGoal:
                         self.goForwards=True
-                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                        # Move
-                        dx, dy = move
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        
+                    # else:
+                    #     self.goForwards=False
+
+                if self.goForwards:
+                    move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                    # Move
+                    dx, dy = move
+                    self.move(dx, dy)
+                    self.moves.append((dx,dy))
+                    return
+                
+                try:# self.wave[self.x][self.y]>5:
+                    dx, dy = self.moves.pop()
+                    self.move(-dx, -dy)
+                    print("backtrack")
                     
-                    if self.goForwards:
-                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                        # Move
-                        dx, dy = move
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        return
+                    
+                except:
+                    self.goForwards=True
+                    move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                    # Move
+                    dx, dy = move
+                    self.move(dx, dy)
+                    self.moves.append((dx,dy))
+                        
                 
             
 
@@ -169,7 +174,7 @@ class AICharacter(CharacterEntity):
             if monsters:
                 monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
                 if monsters and monDist<=3:
-                    actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
+                    actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1),(0,0)]
 
             new_actions = []
             for action in actions:
@@ -180,7 +185,7 @@ class AICharacter(CharacterEntity):
                     new_actions.append((actions[i], 1))
             return new_actions
         except Exception as e:
-            return [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
+            return [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1),(0,0)]
     
     def result(self, wrld, action, mode):
         try:
@@ -289,7 +294,7 @@ class AICharacter(CharacterEntity):
         pq.put((tuple(start),None,0),0)
         explored={}#dict of everything being added as the key and the node that added them (the item) for easy checking to prevent re adding. easy to retrace the path with
         # print(start,goal)
-        
+        bombs=self.findBomb(wrld)
         while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
             element=pq.get()#pulling the first item added to the q which will in practice be the lowest level for bfs exploration
             exploring=element[0]
@@ -302,8 +307,11 @@ class AICharacter(CharacterEntity):
             
             neighbors=self.getNeighbor(wrld,exploring)
             for neighbor in neighbors:
+                
                 if explored.get(neighbor) is None or explored.get(neighbor)[2]>g+1:
                     monstersCost=0
+                    if neighbor ==  bombs:
+                        monstersCost+=1000
                     monsters=self.findMonsters(wrld)
                     for monster in monsters:
                         dist=self.heuristic((neighbor[0], neighbor[1]), monster)
