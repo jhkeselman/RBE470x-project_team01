@@ -70,7 +70,7 @@ class AICharacter(CharacterEntity):
                     self.place_bomb()
                     self.wasBomb=True
                     self.goForwards=False
-                if self.openDist(self.findChar(wrld),self.findMonsters(wrld)[0])<=4:
+                if len(self.astar(wrld,self.findChar(wrld),self.findMonsters(wrld)[0]))<=4:
                     self.place_bomb()
                     self.wasBomb=True
                     self.goForwards=False
@@ -255,8 +255,8 @@ class AICharacter(CharacterEntity):
     
     def utility(self, wrld):
         charx, chary = self.findChar(wrld)
-        # if charx==-1 and chary==-1:
-        #     return float('-inf')
+        if charx==-1 and chary==-1:
+            return float('-inf')
         monsterCost = 0
         bombPoints = 0
         bomb=self.findBomb(wrld)
@@ -342,30 +342,30 @@ class AICharacter(CharacterEntity):
             return neighbors
         
         if celly<rows-1:
-            if wrld.wall_at(cellx,celly+1)==0:
+            if wrld.wall_at(cellx,celly+1)==0 and wrld.explosion_at(cellx,celly+1)==None :
                 neighbors.append((cellx,celly+1))
         if cellx<cols-1:
-            if wrld.wall_at(cellx+1,celly)==0:
+            if wrld.wall_at(cellx+1,celly)==0 and wrld.explosion_at(cellx+1,celly)==None :
                 neighbors.append((cellx+1,celly))
             if celly>0:
-                if wrld.wall_at(cellx+1,celly-1)==0:
+                if wrld.wall_at(cellx+1,celly-1)==0 and wrld.explosion_at(cellx+1,celly-1)==None :
                     neighbors.append((cellx+1,celly-1)) 
             if celly<rows-1:
-                if wrld.wall_at(cellx+1,celly+1)==0:
+                if wrld.wall_at(cellx+1,celly+1)==0 and wrld.explosion_at(cellx+1,celly+1)==None :
                     neighbors.append((cellx+1,celly+1))
         if celly>0:
-            if wrld.wall_at(cellx,celly-1)==0:
+            if wrld.wall_at(cellx,celly-1)==0 and wrld.explosion_at(cellx,celly-1)==None :
                 neighbors.append((cellx,celly-1))
         if cellx>0:
-            if wrld.wall_at(cellx-1,celly)==0:
+            if wrld.wall_at(cellx-1,celly)==0 and wrld.explosion_at(cellx-1,celly)==None :
                 neighbors.append((cellx-1,celly))
             if celly>0:
-                if wrld.wall_at(cellx-1,celly-1)==0:
+                if wrld.wall_at(cellx-1,celly-1)==0 and wrld.explosion_at(cellx-1,celly-1)==None :
                     neighbors.append((cellx-1,celly-1)) 
             if celly<rows-1:
-                if wrld.wall_at(cellx-1,celly+1)==0:
+                if wrld.wall_at(cellx-1,celly+1)==0 and wrld.explosion_at(cellx-1,celly+1)==None :
                     neighbors.append((cellx-1,celly+1))
-
+        # print(neighbors)
         return neighbors
 
 
