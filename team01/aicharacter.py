@@ -34,17 +34,21 @@ class AICharacter(CharacterEntity):
         if self.wave is None:
             self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-
-        if path:
-            # Get best move
-            move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-            # Move
-            dx, dy = move
+        if self.findMonsters(wrld) == []:
+            move = path.pop(1)
+            dx, dy = move[0] - self.x, move[1] - self.y
             self.move(dx, dy)
-            # Place bomb
-            self.place_bomb()
-            # if bomb == 1:
-            #     self.place_bomb()
+        else:
+            if path:
+                # Get best move
+                move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                # Move
+                dx, dy = move
+                self.move(dx, dy)
+                # Place bomb
+                self.place_bomb()
+                # if bomb == 1:
+                #     self.place_bomb()
 
     def abSearch(self, wrld, depth, alpha, beta):
         v = self.maxValue(wrld, depth, alpha, beta)
@@ -124,6 +128,9 @@ class AICharacter(CharacterEntity):
             newWorld = wrld.from_world(wrld)
             if bomb == 1:
                 newWorld.me(self).place_bomb()
+            if mode == 0 and self.findMonsters(wrld):
+                for monster in newWorld.monsters.values():
+                    monster.move(0, 0)
             newWorld.me(self).move(x, y)
             nextWorld, _ = newWorld.next()
             return nextWorld
