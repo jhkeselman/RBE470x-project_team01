@@ -15,6 +15,11 @@ Finally, we used a set of helper function to find specific items in the world. T
 ## 2. Code Breakdown
 This section will dive deeper into specific pieces of our code. We will discuss the structure of our state machine, our A* implementation, our minimax implementation, and our helper functions.
 ### 2.1 State Machine
+Our state machine, implemented in the `do` function, is designed to ensure that character plays safely and "intelligently" until it is safe to simply spring directly towards the goal.
+The state machine is generally structured as follows:
+```
+    Code for state machine...
+```
 ### 2.2 A* Implementation
 Our A* implemention is generally standard, with some small modifications to the priority calculation. The basic structure of our A* algorithm is as follows:
 ```
@@ -67,12 +72,12 @@ To test our code for project 1, we ran a series of 10 tests for each variant, wi
 
 The seeds we used were as follows: 123, 716, 632, 516, 633, 127, 277, 516, 233, 912.
 ### 3.1 Variant 1
-Out of [x] tests, the character successfully reached the goal [y] times. The average score of the character when the run terminated was [z]. This variant should work flawlessly, as it is the simplest of the five variants with no monsters involved.
+Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c]. This variant should work flawlessly, as it is the simplest of the five variants with no monsters involved.
 ### 3.2 Variant 2
-Out of [x] tests, the character successfully reached the goal [y] times. The average score of the character when the run terminated was [z].
+Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
 ### 3.3 Variant 3
-Out of [x] tests, the character successfully reached the goal [y] times. The average score of the character when the run terminated was [z].
+Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
 ### 3.4 Variant 4
-Out of [x] tests, the character successfully reached the goal [y] times. The average score of the character when the run terminated was [z].
+Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
 ### 3.5 Variant 5
-Out of [x] tests, the character successfully reached the goal [y] times. The average score of the character when the run terminated was [z].
+Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
