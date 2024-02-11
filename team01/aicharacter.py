@@ -321,7 +321,7 @@ class AICharacter(CharacterEntity):
                 # print('found goal')
                 break
             
-            neighbors=self.getNeighbor(wrld,exploring)
+            neighbors=self.getNeighbors(wrld,exploring)
             for neighbor in neighbors:
                 
                 if explored.get(neighbor) is None or explored.get(neighbor)[2]>g+1:
@@ -345,7 +345,7 @@ class AICharacter(CharacterEntity):
         return path
 
     #Helper function to return the walkable neighbors 
-    def getNeighbor(self,wrld, cell):
+    def getNeighbors(self,wrld, cell):
         cellx=cell[0]
         celly=cell[1]
         neighbors=[]
