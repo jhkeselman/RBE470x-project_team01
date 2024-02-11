@@ -76,36 +76,35 @@ class AICharacter(CharacterEntity):
                     self.goForwards=False
                 
             else:
-                    if self.goForwards:
-                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                        # Move
-                        dx, dy = move
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        return
+                if self.goForwards:
+                    move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                    # Move
+                    dx, dy = move
+                    self.move(dx, dy)
+                    self.moves.append((dx,dy))
+                    return
+                
+                try:# self.wave[self.x][self.y]>5:
+                    dx, dy = self.moves.pop()
+                    self.move(-dx, -dy)
+                    print("backtrack")
                     
-                    try:# self.wave[self.x][self.y]>5:
-                        dx, dy = self.moves.pop()
-                        self.move(-dx, -dy)
-                        print("backtrack")
-                        
-                        
-                    except:
-                        self.goForwards=True
-                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                        # Move
-                        dx, dy = move
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        
                     
-                    if self.goForwards:
-                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                        # Move
-                        dx, dy = move
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        return
+                except:
+                    self.goForwards=True
+                    move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                    # Move
+                    dx, dy = move
+                    self.move(dx, dy)
+                    self.moves.append((dx,dy))
+                    
+                
+                if self.goForwards:
+                    move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                    # Move
+                    dx, dy = move
+                    self.move(dx, dy)
+                    self.moves.append((dx,dy))
                 
             
 
