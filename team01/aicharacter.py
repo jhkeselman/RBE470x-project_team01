@@ -28,6 +28,8 @@ class AICharacter(CharacterEntity):
     depthMax = 7
     wave=None
     moves=[]
+    wasBomb=False
+    goForwards=False
     
 
     def do(self, wrld):
@@ -40,6 +42,23 @@ class AICharacter(CharacterEntity):
         if path:
             # Get best move
             if not self.findBomb(wrld):
+                monsters=self.findMonsters(wrld)
+                if not monsters:
+                    nextPoint = path.pop(1)
+                    dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+                    self.move(dx, dy)
+                    return
+                else:
+                    selfDistToGoal=self.wave[self.x][self.y]
+                    monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
+                    if selfDistToGoal < monsterDistToGoal - 1:
+                        nextPoint = path.pop(1)
+                        dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+                        self.move(dx, dy)
+                        return
+                if self.wasBomb:
+                    self.wasBomb=False
+                    self.wave=self.generateWavefront(wrld, [exitX, exitY])
                 move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
                 # Move
                 dx, dy = move
@@ -49,11 +68,45 @@ class AICharacter(CharacterEntity):
                 # self.place_bomb()
                 if bomb == 1:
                     self.place_bomb()
-                if self.openDist(self.findChar(wrld),self.findMonsters(wrld)[0])<=3:
+                    self.wasBomb=True
+                    self.goForwards=False
+                if self.openDist(self.findChar(wrld),self.findMonsters(wrld)[0])<=4:
                     self.place_bomb()
+                    self.wasBomb=True
+                    self.goForwards=False
+                
             else:
-                dx, dy = self.moves.pop()
-                self.move(-dx, -dy)
+                    if self.goForwards:
+                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                        # Move
+                        dx, dy = move
+                        self.move(dx, dy)
+                        self.moves.append((dx,dy))
+                        return
+                    
+                    try:# self.wave[self.x][self.y]>5:
+                        dx, dy = self.moves.pop()
+                        self.move(-dx, -dy)
+                        print("backtrack")
+                        
+                        
+                    except:
+                        self.goForwards=True
+                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                        # Move
+                        dx, dy = move
+                        self.move(dx, dy)
+                        self.moves.append((dx,dy))
+                        
+                    
+                    if self.goForwards:
+                        move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                        # Move
+                        dx, dy = move
+                        self.move(dx, dy)
+                        self.moves.append((dx,dy))
+                        return
+                
             
 
 
@@ -223,8 +276,9 @@ class AICharacter(CharacterEntity):
             if selfDistToGoal > monsterDistToGoal and monDist<=2:
                 monsterCost *=4
                 # selfDistToGoal+=20
-            elif selfDistToGoal < monsterDistToGoal:
+            elif selfDistToGoal < monsterDistToGoal-1:
                 monsterCost -= 10
+                return 7000
         return wrld.time - selfDistToGoal - monsterCost + bombPoints
         
     def astar(self, wrld, start, goal):
