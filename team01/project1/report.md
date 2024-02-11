@@ -18,8 +18,15 @@ This section will dive deeper into specific pieces of our code. We will discuss 
 ### 2.3 Minimax Implementation
 ### 2.4 Helper Functions
 Our four *find* functions all follow a similar structure, shown with the following pseudocode:
-```pythonafasdf
 ```
+def findItem(self, item):
+    loop through world rows
+        loop through world columns
+            if row and column contain item
+                return (row, column)
+    return nothing if item not found 
+```
+This basic structure has slight modifications for each specific item, with each type requiring different return values when not found. The `findMonsters` method uses an array to store the position of monsters, rather than returning directly, as there may be more than one monster present in the world. These functions are also versatile, allowing us to search through either the actual world state or the state of a copied world, which is useful for our minimax implementation.
 ## 3. Experimental Evaluation
 To test our code for project 1, we ran a series of 10 tests for each variant, with different seeds for each test. For each test, we recorded whether or not the character successfully reached the goal, and the score of the character when the run terminated. We then averaged these scores to get a sense of how well our code performed. The results of these tests, as well as some brief analysis, are shown below.
 
