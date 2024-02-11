@@ -25,8 +25,10 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
-    depthMax = 5
+    depthMax = 7
     wave=None
+    moves=[]
+    
 
     def do(self, wrld):
             
@@ -37,17 +39,27 @@ class AICharacter(CharacterEntity):
 
         if path:
             # Get best move
-            move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-            # Move
-            dx, dy = move
-            self.move(dx, dy)
-            # Place bomb
-            self.place_bomb()
-            # if bomb == 1:
-            #     self.place_bomb()
+            if not self.findBomb(wrld):
+                move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+                # Move
+                dx, dy = move
+                self.move(dx, dy)
+                self.moves.append((dx,dy))
+                # Place bomb
+                # self.place_bomb()
+                if bomb == 1:
+                    self.place_bomb()
+                if self.openDist(self.findChar(wrld),self.findMonsters(wrld)[0])<=3:
+                    self.place_bomb()
+            else:
+                dx, dy = self.moves.pop()
+                self.move(-dx, -dy)
+            
+
 
     def abSearch(self, wrld, depth, alpha, beta):
         v = self.maxValue(wrld, depth, alpha, beta)
+        
         #print("optimal found: ",self.optimalAction)
         return self.optimalAction
     
@@ -188,6 +200,8 @@ class AICharacter(CharacterEntity):
         # if charx==-1 and chary==-1:
         #     return float('-inf')
         monsterCost = 0
+        bombPoints = 0
+        bomb=self.findBomb(wrld)
         monsters = self.findMonsters(wrld)
         selfDistToGoal=self.wave[charx][chary]
         monDist=float('inf')
@@ -200,6 +214,10 @@ class AICharacter(CharacterEntity):
                 if dist<monDist:
                     monDist=dist
                 monsterCost+=50
+                if bomb:
+                    bombDist=self.openDist(bomb,monster)
+                    if bombDist<=8:# and (abs(bomb[0]-monster[0])<=2 or abs(bomb[1]-monster[1])<=2):
+                        bombPoints+=50
             monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
             
             if selfDistToGoal > monsterDistToGoal and monDist<=2:
@@ -207,7 +225,7 @@ class AICharacter(CharacterEntity):
                 # selfDistToGoal+=20
             elif selfDistToGoal < monsterDistToGoal:
                 monsterCost -= 10
-        return wrld.time - selfDistToGoal - monsterCost
+        return wrld.time - selfDistToGoal - monsterCost + bombPoints
         
     def astar(self, wrld, start, goal):
         path = []
