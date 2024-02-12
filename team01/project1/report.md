@@ -16,7 +16,20 @@ This section will dive deeper into specific pieces of our code. We will discuss 
 Our state machine, implemented in the `do` function, is designed to ensure that character plays safely and "intelligently" until it is safe to simply spring directly towards the goal.
 The state machine is generally structured as follows:
 ```
-    Code for state machine...
+Check if closer to the goal than monsters
+    if so A* straight to goal
+    else
+    Check if there is no bomb on the field and monsters
+        if so check if the closest monster is within 5 A* steps and not at x=0 or y=0
+            if so place bomb
+    Check again if bomb is on the field or is being placed on the field
+        Check for no monsters
+            if so A* straight to goal
+        if not alpha beta search for best move
+    If bomb was on the field or being placed
+        Check if closer than monsters
+            Minimax to goal
+        if not backtrack to the start and stay till the bomb goes
 ```
 ### 2.2 A* Implementation
 Our A* implemention is generally standard, with some small modifications to the priority calculation. The basic structure of our A* algorithm is as follows:
