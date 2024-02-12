@@ -19,7 +19,7 @@ The state machine is generally structured as follows:
 Check if closer to the goal than monsters
     if so A* straight to goal
     else
-    Check if there is no bomb on the field and monsters
+    Check if there is no bomb on the field and for the presence of monsters
         if so check if the closest monster is within 5 A* steps and not at x=0 or y=0
             if so place bomb
     Check again if bomb is on the field or is being placed on the field
