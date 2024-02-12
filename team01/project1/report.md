@@ -72,12 +72,12 @@ To test our code for project 1, we ran a series of 10 tests for each variant, wi
 
 The seeds we used were as follows: 123, 716, 632, 516, 633, 127, 277, 516, 233, 912.
 ### 3.1 Variant 1
-Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c]. This variant should work flawlessly, as it is the simplest of the five variants with no monsters involved.
+Out of 10 tests, the character successfully reached the goal 10 times. The average score of the character when the run terminated was 4978. This variant should work flawlessly, as it is the simplest of the five variants with no monsters involved.
 ### 3.2 Variant 2
-Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
+Out of 10 tests, the character successfully reached the goal 10 times. The average score of the character when the run terminated was 4983.
 ### 3.3 Variant 3
-Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
+Out of 10 tests, the character successfully reached the goal 10 times. The average score of the character when the run terminated was 4997.
 ### 3.4 Variant 4
-Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
+Out of 10 tests, the character successfully reached the goal 7 times. The average score of the character when the run terminated was 2013.
 ### 3.5 Variant 5
-Out of [a] tests, the character successfully reached the goal [b] times. The average score of the character when the run terminated was [c].
+Out of 10 tests, the character successfully reached the goal 6 times. The average score of the character when the run terminated was 1068.
