@@ -43,6 +43,7 @@ class AICharacter(CharacterEntity):
         skipAB=False
         if path:
             monsters=self.findMonsters(wrld)
+            #if monsters check if you are closer to the goal and be line to the goal
             if monsters!=[]:
                 selfDistToGoal=self.wave[self.x][self.y]
                 monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
@@ -52,7 +53,7 @@ class AICharacter(CharacterEntity):
                     self.move(dx, dy)
                     return
             if not self.findBomb(wrld):
-                
+                #bomb if monster is within 5 steps
                 if monsters!=[]:
                     closestMonster=(-1,-1)
                     for monster in monsters:
@@ -69,7 +70,8 @@ class AICharacter(CharacterEntity):
             if (not self.findBomb(wrld) )and not skipAB:
                 print("the reg")
                 monsters=self.findMonsters(wrld)
-                if not monsters:
+                
+                if not monsters: # a* to goal
                     nextPoint = path.pop(1)
                     dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                     self.move(dx, dy)
@@ -77,6 +79,7 @@ class AICharacter(CharacterEntity):
                 else:
                     selfDistToGoal=self.wave[self.x][self.y]
                     monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
+                    #go fast to goal if closer than monster
                     if selfDistToGoal < monsterDistToGoal:
                         nextPoint = path.pop(1)
                         dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
@@ -97,18 +100,10 @@ class AICharacter(CharacterEntity):
                     self.wasBomb=True
                     self.goForwards=False
 
-                # monsters=self.findMonsters(wrld)
-                # if monsters:
-                #     closestMonster=(-1,-1)
-                #     for monster in monsters:
-                #         if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
-                #             closestMonster=monster
-                # if len(self.astar(wrld,self.findChar(wrld),closestMonster))<=4:
-                #     self.place_bomb()
-                #     self.wasBomb=True
-                #     self.goForwards=False
                 
-            else:
+            else: # if theres a bomb
+
+                #go for the exit if we are closer to the goal than the closer monster else go back
                 monsters=self.findMonsters(wrld)
                 if monsters:
                     closestMonster=(-1,-1)
@@ -122,6 +117,7 @@ class AICharacter(CharacterEntity):
                     else:
                         self.goForwards=False
 
+                #going toward the exit
                 if self.goForwards:
                     move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
                     # Move
@@ -130,6 +126,7 @@ class AICharacter(CharacterEntity):
                     self.moves.append((dx,dy))
                     return
                 
+                #if going back go back start
                 if (self.x,self.y)!=self.start:# self.wave[self.x][self.y]>5:
                     path = self.astar(wrld, [self.x, self.y], self.start,False)
                     if path:
@@ -137,26 +134,9 @@ class AICharacter(CharacterEntity):
                         dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                         self.move(dx, dy)
                         self.moves.append((dx,dy))
-                #     else:
-                #         self.goForwards=True
-                # if self.moves:
-                #     dx, dy = self.moves.pop()
-                #     self.move(-dx, -dy)
-                #     print("backtrack",-dx,-dy)
-                    
+         
+                # if at start stall
                 else:
-                    # self.goForwards=True
-                    # move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                    # # Move
-                    # dx, dy = move
-                    # self.move(dx, dy)
-                    # self.moves.append((dx,dy))
-                    # path = self.astar(wrld, [self.x, self.y], [wrld.width()-1, self.start[1]])
-                    # if len(path)>1:
-                    #     nextPoint = path.pop(1)
-                    #     dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-                    #     self.move(dx, dy)
-                    #     self.moves.append((dx,dy))
                     pass
                 
             
