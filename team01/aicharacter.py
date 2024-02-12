@@ -42,8 +42,17 @@ class AICharacter(CharacterEntity):
         print(self.moves)
         skipAB=False
         if path:
+            monsters=self.findMonsters(wrld)
+            if monsters!=[]:
+                selfDistToGoal=self.wave[self.x][self.y]
+                monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
+                if selfDistToGoal < monsterDistToGoal-2:
+                    nextPoint = path.pop(1)
+                    dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+                    self.move(dx, dy)
+                    return
             if not self.findBomb(wrld):
-                monsters=self.findMonsters(wrld)
+                
                 if monsters!=[]:
                     closestMonster=(-1,-1)
                     for monster in monsters:
@@ -142,13 +151,13 @@ class AICharacter(CharacterEntity):
                     # dx, dy = move
                     # self.move(dx, dy)
                     # self.moves.append((dx,dy))
-                    path = self.astar(wrld, [self.x, self.y], [self.start[0], -self.start[1]])
-                    if len(path)>1:
-                        nextPoint = path.pop(1)
-                        dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-                        self.move(dx, dy)
-                        self.moves.append((dx,dy))
-                        
+                    # path = self.astar(wrld, [self.x, self.y], [wrld.width()-1, self.start[1]])
+                    # if len(path)>1:
+                    #     nextPoint = path.pop(1)
+                    #     dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+                    #     self.move(dx, dy)
+                    #     self.moves.append((dx,dy))
+                    pass
                 
             
 
