@@ -58,7 +58,7 @@ class AICharacter(CharacterEntity):
                     for monster in monsters:
                         if closestMonster==(-1,-1) or self.openDist((self.x,self.y),monster)<self.openDist((self.x,self.y),closestMonster):
                             closestMonster=monster
-                    if len(self.astar(wrld,self.findChar(wrld),closestMonster,False))<=5:
+                    if len(self.astar(wrld,self.findChar(wrld),closestMonster,False))<=5 and self.y>0 and self.x>0:
                         self.place_bomb()
                         self.wasBomb=True
                         self.goForwards=False
