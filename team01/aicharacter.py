@@ -9,21 +9,9 @@ from entity import CharacterEntity
 from colorama import Fore, Back
 from priority_queue import PriorityQueue
 
-# class State(Enum):
-#     SEARCH = 0
-#     EXIT = 1
-
 class AICharacter(CharacterEntity):
-    
-    # curState = 0
-    # name, avatar, x, y = "", "", 0, 0
-    # def __init__(self, name, avatar, x, y):
-    #     self.name = name
-    #     self.avatar = avatar
-    #     self.x = x
-    #     self.y = y
-    #     self.curState = State.SEARCH
 
+    #  Init class variables
     optimalAction = ()
     depthMax = 3
     wave=None
@@ -32,18 +20,21 @@ class AICharacter(CharacterEntity):
     goForwards=False
     start=None
 
+    # Take an action
     def do(self, wrld):
-            
+        
+        # Store exit, find wavefront, and find path
         exitX, exitY = self.findExit(wrld)
         if self.wave is None:
             self.start=(self.x,self.y)
             self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-        print(self.moves)
+        
         skipAB=False
+
         if path:
             monsters=self.findMonsters(wrld)
-            #if monsters check if you are closer to the goal and be line to the goal
+            # If closer to goal than monsters, go directly to the goal
             if monsters!=[]:
                 selfDistToGoal=self.wave[self.x][self.y]
                 monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
@@ -53,7 +44,7 @@ class AICharacter(CharacterEntity):
                     self.move(dx, dy)
                     return
             if not self.findBomb(wrld):
-                #bomb if monster is within 5 steps
+                # Bomb if monster is within 5 steps
                 if monsters!=[]:
                     closestMonster=(-1,-1)
                     for monster in monsters:
@@ -79,7 +70,7 @@ class AICharacter(CharacterEntity):
                 else:
                     selfDistToGoal=self.wave[self.x][self.y]
                     monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
-                    #go fast to goal if closer than monster
+                    # Go fast to goal if closer than monster
                     if selfDistToGoal < monsterDistToGoal:
                         nextPoint = path.pop(1)
                         dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
@@ -93,8 +84,8 @@ class AICharacter(CharacterEntity):
                 dx, dy = move
                 self.move(dx, dy)
                 self.moves.append((dx,dy))
+
                 # Place bomb
-                # self.place_bomb()
                 if bomb == 1:
                     self.place_bomb()
                     self.wasBomb=True
@@ -138,53 +129,75 @@ class AICharacter(CharacterEntity):
                 # if at start stall
                 else:
                     pass
-                
-            
-
 
     def abSearch(self, wrld, depth, alpha, beta):
+        """
+        Performs an alpha-beta search to find the best action.
+
+        Args:
+            wrld (World): The current game world.
+            depth (int): The depth of the search tree.
+            alpha (float): The alpha value for alpha-beta pruning.
+            beta (float): The beta value for alpha-beta pruning.
+
+        Returns:
+            Action: The optimal action to take.
+        """
+        # Get best action
         v = self.maxValue(wrld, depth, alpha, beta)
-        
-        #print("optimal found: ",self.optimalAction)
         return self.optimalAction
     
     def maxValue(self, wrld, depth, alpha, beta):
-        # print("maxValue")
-        if wrld == None:
-            return float('-inf')
-        if self.terminal(wrld, depth):
-            return self.utility(wrld)
-        v = float('-inf')
-        try:
-            self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.RED + Back.RED)
-        except:
-            pass
-        for action in self.actions(wrld):
-            v = max(v, self.minValue(self.result(wrld, action), depth-1, alpha, beta)) # was maxValue
-            # print("value returned: ",v)
-            if v > alpha and depth == self.depthMax:
-                self.optimalAction = action
-                # print("set")
-            if v >= beta:
-                return v
-            alpha = max(alpha, v)
-        return v
+            """
+            Calculates the maximum value for the AI character using the minimax algorithm with alpha-beta pruning.
+
+            Parameters:
+            - wrld: The current state of the world.
+            - depth: The current depth of the search.
+            - alpha: The alpha value for alpha-beta pruning.
+            - beta: The beta value for alpha-beta pruning.
+
+            Returns:
+            - The maximum value for the AI character.
+            """
+            # Edge cases
+            if wrld == None:
+                return float('-inf')
+            if self.terminal(wrld, depth):
+                return self.utility(wrld)
+            
+            v = float('-inf')
+            
+            for action in self.actions(wrld):
+                v = max(v, self.minValue(self.result(wrld, action), depth-1, alpha, beta))
+                if v > alpha and depth == self.depthMax:
+                    # Save optimal action
+                    self.optimalAction = action
+                if v >= beta:
+                    return v
+                alpha = max(alpha, v)
+            return v
     
     def minValue(self, wrld, depth, alpha, beta):
-        # print("minValue")
+        """
+        Calculates the minimum value (the monster's action) in a given game world state.
+
+        Args:
+            wrld (GameWorld): The current game world state.
+            depth (int): The current depth of the search.
+            alpha (float): The alpha value for alpha-beta pruning.
+            beta (float): The beta value for alpha-beta pruning.
+
+        Returns:
+            float: The minimum utility value for the AI character.
+
+        """
         if wrld == None:
             return float('-inf')
-        # print("depth: ",depth)
         if self.terminal(wrld, depth):
             return self.utility(wrld)
         v = float('inf')
-        # try:
-        #     self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.MAGENTA + Back.MAGENTA)
-        # except:
-        #     pass
-        # print(self.monsterActions(wrld))
         for action in self.monsterActions(wrld):
-            # print("action: ",action)
             v = min(v, self.maxValue(self.result(wrld, action), depth-1, alpha, beta))
             if v <= alpha:
                 return v
@@ -192,6 +205,16 @@ class AICharacter(CharacterEntity):
         return v
     
     def actions(self, wrld):
+        """
+        Generates a list of possible actions for the AI character based on the current game world state.
+
+        Args:
+            wrld (World): The current game world state.
+
+        Returns:
+            list: A list of tuples representing the possible actions. Each tuple consists of a movement direction (dx, dy)
+            and a flag indicating whether to place a bomb (1) or not (0).
+        """
         try:
             path = self.astar(wrld, [wrld.me(self).x, wrld.me(self).y], self.findExit(wrld))
             nextPoint = path.pop(1)
@@ -211,12 +234,24 @@ class AICharacter(CharacterEntity):
                 for i in range(len(actions)):
                     new_actions.append((actions[i], 1))
             return new_actions
-        except Exception as e:
+        except:
             return [(1,1),(-1,-1),(1,-1),(-1,1)]
     
     def result(self, wrld, action):
+        """
+        Applies the given action to the world state and returns the resulting world state.
+
+        Args:
+            wrld (World): The current world state.
+            action (tuple): The action to be applied, consisting of the movement coordinates (x, y)
+                            and a flag indicating whether to place a bomb (1) or not (0).
+
+        Returns:
+            World: The resulting world state after applying the action.
+            None: If an exception occurs during the action application.
+        """
         try:
-            x,y = action[0]
+            x, y = action[0]
             bomb = action[1]
             newWorld = wrld.from_world(wrld)
             if bomb == 1:
@@ -226,140 +261,183 @@ class AICharacter(CharacterEntity):
             return nextWorld
         except:
             return None
-        # move = action[0]
-        # place_bomb = action[1]
-        # try:
-        #     newWorld = wrld.from_world(wrld)
-        #     newWorld.me(self).move(move[0], move[1])
-        #     if place_bomb == 1:
-        #         newWorld.me(self).place_bomb()
-        #     try:
-        #         if(mode == 0):
-        #             for monster in newWorld.monsters.values():
-        #                 monster.move(0, 0)
-        #         if(mode == 1):
-        #             for monster in newWorld.monsters.values():
-        #                 monster.move(action[0], action[1])
-        #     except:
-        #         pass
-        #     ex, ey = self.findExit(wrld)
-        #     if newWorld.me(self).x + action[0] == ex and newWorld.me(self).y + action[1] == ey:
-        #         return wrld
-        #     nextWorld, _ = newWorld.next()
-        #     return nextWorld
-        # except:
-        #     return None
     
     def monsterActions(self, wrld):
-        # monDist=float('inf')
-        # monsters=self.findMonsters(wrld)
-        # for monster in monsters:
-        #     dist = len(self.astar(wrld,(wrld.me(self).x, wrld.me(self).y), monster))
-        #     if dist<monDist:
-        #         monDist=dist
-        # if monDist<=2:
-        #     path=self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])
-        #     nextPoint = path.pop(1)
-        #     dx, dy = nextPoint[0] - monster[0], nextPoint[1] - monster[1]
-        #     return [((dx, dy),0)]
-        # else:
-        #     return [((1,0),0), ((0,1),0), ((-1,0),0), ((0,-1),0), ((1,1),0), ((-1,-1),0), ((1,-1),0), ((-1,1),0)]
+        """
+        Perform actions for the monster character.
+
+        Args:
+            wrld: The current game world.
+
+        Returns:
+            A list of tuples representing the monster's actions. Each tuple contains:
+            - A movement direction as a tuple (dx, dy)
+            - A bomb placement indicator (0 for no bomb, 1 for bomb placement)
+        """
+        # Pretend no moves for speed
         return [((0,0),0)]
-        # charx, chary = self.findChar(wrld)
-        # monsters=self.findMonsters(wrld)
-        # actions=[]
-        # for monster in monsters:
-        #     path = self.astar(wrld, monster, (charx, chary))
-        #     if path:
-        #         nextPoint = path.pop(1)
-        #         dx, dy = nextPoint[0] - monster[0], nextPoint[1] - monster[1]
-        #         actions.append((dx, dy))
-        # return actions
     
     def terminal(self, wrld, depth):
-        if depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) or wrld.explosion_at(self.x, self.y):
-            return True
+            """
+            Checks if the current state is a terminal state.
+
+            Parameters:
+                wrld (World): The current game world.
+                depth (int): The current depth of the search.
+
+            Returns:
+                bool: True if the state is terminal, False otherwise.
+            """
+            # Check terminal conditions
+            if depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) or wrld.explosion_at(self.x, self.y):
+                return True
     
     def utility(self, wrld):
+        """
+        Calculate the utility of the world for the AI character.
+
+        Parameters:
+        - wrld (World): The current state of the world.
+
+        Returns:
+        - float: The utility value of the world.
+        """
         charx, chary = self.findChar(wrld)
-        if charx==-1 and chary==-1:
+        if charx == -1 and chary == -1:
             return float('-inf')
         monsterCost = 0
         bombPoints = 0
-        bomb=self.findBomb(wrld)
+        bomb = self.findBomb(wrld)
         monsters = self.findMonsters(wrld)
-        selfDistToGoal=self.wave[charx][chary]
-        monDist=float('inf')
+        selfDistToGoal = self.wave[charx][chary]
+        monDist = float('inf')
         if wrld.explosion_at(charx, chary):
             return float('-inf')
         if monsters:
-            # monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
             for monster in monsters:
-                dist = len(self.astar(wrld,(charx, chary), monster))
+                dist = len(self.astar(wrld, (charx, chary), monster))
                 if dist <= 3:
-                    monsterCost += (2*(4-dist))**2
-                if dist<monDist:
-                    monDist=dist
-                monsterCost+=50
+                    monsterCost += (2 * (4 - dist)) ** 2
+                if dist < monDist:
+                    monDist = dist
+                monsterCost += 50
                 if bomb:
-                    bombDist=self.openDist(bomb,monster)
-                    if bombDist<=8:# and (abs(bomb[0]-monster[0])<=2 or abs(bomb[1]-monster[1])<=2):
-                        bombPoints+=50
-            monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
-            
-            if selfDistToGoal > monsterDistToGoal and monDist<=2:
-                monsterCost *=4
-                # selfDistToGoal+=20
-            
-            elif selfDistToGoal < monsterDistToGoal-1:
+                    bombDist = self.openDist(bomb, monster)
+                    if bombDist <= 8:
+                        bombPoints += 50
+            monsterDistToGoal = min([self.wave[monster[0]][monster[1]] for monster in monsters])
+
+            if selfDistToGoal > monsterDistToGoal and monDist <= 2:
+                monsterCost *= 4
+
+            elif selfDistToGoal < monsterDistToGoal - 1:
                 monsterCost -= 10
                 return 7000
         return wrld.time - selfDistToGoal - monsterCost + bombPoints
         
     def astar(self, wrld, start, goal, withMonster=True):
+        """
+        A* algorithm for finding the shortest path from start to goal in a given world.
+
+        Args:
+            wrld (World): The game world.
+            start (tuple): The starting position.
+            goal (tuple): The goal position.
+            withMonster (bool, optional): Whether to consider monsters in the pathfinding. Defaults to True.
+
+        Returns:
+            list: The shortest path from start to goal as a list of positions.
+        """
         path = []
         found = False
 
-        pq=PriorityQueue() #
-        pq.put((tuple(start),None,0),0)
-        explored={}#dict of everything being added as the key and the node that added them (the item) for easy checking to prevent re adding. easy to retrace the path with
-        # print(start,goal)
-        bombs=self.findBomb(wrld)
-        while not found and not pq.empty():#if there is nothing left in the q there is nothing left to explore therefore no possible path to find
-            element=pq.get()#pulling the first item added to the q which will in practice be the lowest level for bfs exploration
-            exploring=element[0]
-            g=element[2]
+        pq = PriorityQueue()
+        pq.put((tuple(start), None, 0), 0)
+        explored = {}
+        bombs = self.findBomb(wrld)
+        while not found and not pq.empty():
+            element = pq.get()
+            exploring = element[0]
+            g = element[2]
             explored[exploring] = element
-            if exploring == tuple(goal):#exploring the goal exit condition
-                found=True
-                # print('found goal')
+            if exploring == tuple(goal):
+                found = True
                 break
-            
-            neighbors=self.getNeighbors(wrld,exploring)
+
+            neighbors = self.getNeighbors(wrld, exploring)
             for neighbor in neighbors:
-                
-                if explored.get(neighbor) is None or explored.get(neighbor)[2]>g+1:
-                    monstersCost=0
-                    if neighbor ==  bombs:
-                        monstersCost+=1000
+                if explored.get(neighbor) is None or explored.get(neighbor)[2] > g + 1:
+                    monstersCost = 0
+                    if neighbor == bombs:
+                        monstersCost += 1000
                     if withMonster:
-                        monsters=self.findMonsters(wrld)
+                        monsters = self.findMonsters(wrld)
                         for monster in monsters:
-                            dist=self.heuristic((neighbor[0], neighbor[1]), monster)
-                            if dist<=3:
-                                monstersCost+=2*(4-dist)
-                    f=g+1+self.heuristic(neighbor,goal)+monstersCost#heuristic is the manhattan distance and is used cause this is A*
-                
-                    pq.put((neighbor,exploring,g+1),f)
-            # print(pq.get_queue())
+                            dist = self.heuristic((neighbor[0], neighbor[1]), monster)
+                            if dist <= 3:
+                                monstersCost += 2 * (4 - dist)
+                    f = g + 1 + self.heuristic(neighbor, goal) + monstersCost
+                    pq.put((neighbor, exploring, g + 1), f)
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
-        #     print(f"It takes {steps} steps to find a path using A*")
-        # else:
-        #     print("No path found")
         return path
 
     #Helper function to return the walkable neighbors 
+    def getNeighbors(self, wrld, cell):
+        """
+        Returns a list of neighboring cells that are accessible from the given cell.
+
+        Parameters:
+            wrld (World): The game world.
+            cell (tuple): The coordinates of the cell.
+
+        Returns:
+            list: A list of neighboring cells that are accessible from the given cell.
+        """
+        cellx = cell[0]
+        celly = cell[1]
+        neighbors = []
+        rows, cols = wrld.height(), wrld.width()
+
+        if cellx < 0 or cellx >= cols or celly < 0 or celly >= rows:
+            return neighbors
+
+        if wrld.wall_at(cellx, celly) == 1:
+            return neighbors
+
+        if celly < rows - 1:
+            if wrld.wall_at(cellx, celly + 1) == 0 and wrld.explosion_at(cellx, celly + 1) is None and not self.checkExplode(
+                    wrld, self.findBomb(wrld), (cellx, celly + 1)):
+                neighbors.append((cellx, celly + 1))
+        if cellx < cols - 1:
+            if wrld.wall_at(cellx + 1, celly) == 0 and wrld.explosion_at(cellx + 1, celly) is None and not self.checkExplode(
+                    wrld, self.findBomb(wrld), (cellx + 1, celly)):
+                neighbors.append((cellx + 1, celly))
+            if celly > 0:
+                if wrld.wall_at(cellx + 1, celly - 1) == 0 and wrld.explosion_at(cellx + 1, celly - 1) is None and not self.checkExplode(
+                        wrld, self.findBomb(wrld), (cellx + 1, celly - 1)):
+                    neighbors.append((cellx + 1, celly - 1))
+                if celly < rows - 1:
+                    if wrld.wall_at(cellx + 1, celly + 1) == 0 and wrld.explosion_at(cellx + 1, celly + 1) is None and not self.checkExplode(
+                            wrld, self.findBomb(wrld), (cellx + 1, celly + 1)):
+                        neighbors.append((cellx + 1, celly + 1))
+        if celly > 0:
+            if wrld.wall_at(cellx, celly - 1) == 0 and wrld.explosion_at(cellx, celly - 1) is None and not self.checkExplode(
+                    wrld, self.findBomb(wrld), (cellx, celly - 1)):
+                neighbors.append((cellx, celly - 1))
+        if cellx > 0:
+            if wrld.wall_at(cellx - 1, celly) == 0 and wrld.explosion_at(cellx - 1, celly) is None and not self.checkExplode(
+                    wrld, self.findBomb(wrld), (cellx - 1, celly)):
+                neighbors.append((cellx - 1, celly))
+            if celly > 0:
+                if wrld.wall_at(cellx - 1, celly - 1) == 0 and wrld.explosion_at(cellx - 1, celly - 1) is None and not self.checkExplode(
+                        wrld, self.findBomb(wrld), (cellx - 1, celly - 1)):
+                    neighbors.append((cellx - 1, celly - 1))
+                if celly < rows - 1:
+                    if wrld.wall_at(cellx - 1, celly + 1) == 0 and wrld.explosion_at(cellx - 1, celly + 1) is None and not self.checkExplode(
+                            wrld, self.findBomb(wrld), (cellx - 1, celly + 1)):
+                        neighbors.append((cellx - 1, celly + 1))
+        return neighbors
     def getNeighbors(self,wrld, cell):
         cellx=cell[0]
         celly=cell[1]
@@ -368,7 +446,7 @@ class AICharacter(CharacterEntity):
         
         if cellx<0 or cellx>=cols or celly<0 or celly>=rows:
             return neighbors
-        # print(cellx,celly)
+
         if wrld.wall_at(cellx,celly)==1:
             return neighbors
         
@@ -396,11 +474,10 @@ class AICharacter(CharacterEntity):
             if celly<rows-1:
                 if wrld.wall_at(cellx-1,celly+1)==0 and wrld.explosion_at(cellx-1,celly+1) is None and not self.checkExplode(wrld,self.findBomb(wrld),(cellx-1,celly+1)):
                     neighbors.append((cellx-1,celly+1))
-        # print(neighbors)
         return neighbors
 
 
-    #Helper function to reconstruct the path from the explored dictionary
+    # Helper function to reconstruct the path from the explored dictionary
     def reconstructPath(self, explored: dict, start: tuple[int, int], goal: tuple[int, int]) -> list[list[int, int]]:   
             """
             A helper function to reconstruct the path from the explored dictionary
@@ -424,6 +501,16 @@ class AICharacter(CharacterEntity):
     
     
     def generateWavefront(self, wrld, start):
+        """
+        Generates a wavefront grid representing the shortest path from the start position to each cell in the world.
+
+        Args:
+            wrld (World): The game world.
+            start (tuple): The starting position (row, column).
+
+        Returns:
+            list: A 2D grid representing the wavefront, where each cell contains the cost of reaching that cell from the start position.
+        """
         rows, cols = wrld.height(), wrld.width()
         wavefront = [[float('inf') for _ in range(rows)] for _ in range(cols)]
         wavefront[start[0]][start[1]] = 0
@@ -442,13 +529,44 @@ class AICharacter(CharacterEntity):
         return wavefront
     
 
-    def heuristic(self,p1, p2):
-        return sum([abs(p2[0]-p1[0]),abs(p2[1]-p1[1])])
+    def heuristic(self, p1, p2):
+        """
+        Calculate the heuristic value between two points.
+
+        Args:
+            p1 (tuple): The coordinates of the first point.
+            p2 (tuple): The coordinates of the second point.
+
+        Returns:
+            int: The heuristic value between the two points.
+        """
+        return sum([abs(p2[0] - p1[0]), abs(p2[1] - p1[1])])
     
-    def openDist(self,p1,p2):
-        return max(abs(p2[0]-p1[0]),abs(p2[1]-p1[1]))
+    
+    def openDist(self, p1, p2):
+        """
+        Calculates the open distance between two points.
+
+        Parameters:
+        p1 (tuple): The coordinates of the first point (x1, y1).
+        p2 (tuple): The coordinates of the second point (x2, y2).
+
+        Returns:
+        int: The maximum absolute difference between the x-coordinates and the y-coordinates of the two points.
+        """
+        return max(abs(p2[0] - p1[0]), abs(p2[1] - p1[1]))
         
-    def findExit(self,wrld):
+    def findExit(self, wrld):
+        """
+        Finds the coordinates of the exit in the given world.
+
+        Parameters:
+        - wrld: The world object representing the game world.
+
+        Returns:
+        - exitX: The x-coordinate of the exit.
+        - exitY: The y-coordinate of the exit.
+        """
         exitY, exitX = 0, 0
         for row in range(wrld.height()):
             for col in range(wrld.width()):
@@ -456,7 +574,16 @@ class AICharacter(CharacterEntity):
                     exitY, exitX = row, col
         return exitX, exitY
     
-    def findChar(self,wrld):
+    def findChar(self, wrld):
+        """
+        Finds the character in the given world.
+
+        Parameters:
+        wrld (World): The world object.
+
+        Returns:
+        tuple: The x and y coordinates of the character.
+        """
         y, x = -1, -1
         for row in range(wrld.height()):
             for col in range(wrld.width()):
@@ -464,24 +591,53 @@ class AICharacter(CharacterEntity):
                     y, x = row, col
         return x, y
     
-    def findMonsters(self,wrld):
-        monsters=[]
-        for row in range(wrld.height()):
-            for col in range(wrld.width()):
-                if wrld.monsters_at(col, row):
-                    monsters.append((col, row))
-        return monsters
+    def findMonsters(self, wrld):
+            """
+            Finds and returns the positions of all monsters in the given world.
+
+            Parameters:
+            - wrld (World): The game world.
+
+            Returns:
+            - list: A list of tuples representing the positions of the monsters.
+            """
+            monsters = []
+            for row in range(wrld.height()):
+                for col in range(wrld.width()):
+                    if wrld.monsters_at(col, row):
+                        monsters.append((col, row))
+            return monsters
     
-    def findBomb(self,wrld):
+    def findBomb(self, wrld):
+        """
+        Finds the coordinates of the first bomb in the given world.
+
+        Parameters:
+            wrld (World): The game world.
+
+        Returns:
+            tuple: The coordinates (col, row) of the first bomb found, or None if no bomb is found.
+        """
         for row in range(wrld.height()):
             for col in range(wrld.width()):
                 if wrld.bomb_at(col, row):
                     return (col, row)
         return None
 
-    def checkExplode(self,wrld,bomb,tile):
+    def checkExplode(self, wrld, bomb, tile):
+        """
+        Checks if a bomb explosion will reach a given tile.
+
+        Args:
+            wrld (World): The game world.
+            bomb (tuple): The coordinates of the bomb.
+            tile (tuple): The coordinates of the tile to check.
+
+        Returns:
+            bool: True if the bomb explosion will reach the tile, False otherwise.
+        """
         if bomb is None:
             return False
-        if wrld.bomb_at(bomb[0],bomb[1]).timer<=1:
-            if  (abs(tile[0]-bomb[0])<=5 and tile[1]==bomb[1]) or (abs(tile[1]-bomb[1])<=5 and tile[0]==bomb[0]):
+        if wrld.bomb_at(bomb[0], bomb[1]).timer <= 1:
+            if (abs(tile[0] - bomb[0]) <= 5 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 5 and tile[0] == bomb[0]):
                 return True
