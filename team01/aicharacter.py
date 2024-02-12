@@ -25,7 +25,7 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
-    depthMax = 5
+    depthMax = 3
     wave=None
     moves=[]
     wasBomb=False
