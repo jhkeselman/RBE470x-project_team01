@@ -25,7 +25,7 @@ class AICharacter(CharacterEntity):
     #     self.curState = State.SEARCH
 
     optimalAction = ()
-    depthMax = 5
+    depthMax = 4
     wave=None
 
     def do(self, wrld):
@@ -34,21 +34,26 @@ class AICharacter(CharacterEntity):
         if self.wave is None:
             self.wave=self.generateWavefront(wrld, [exitX, exitY])
         path = self.astar(wrld, [self.x, self.y], [exitX, exitY])
-        if self.findMonsters(wrld) == []:
-            move = path.pop(1)
-            dx, dy = move[0] - self.x, move[1] - self.y
-            self.move(dx, dy)
-        else:
-            if path:
-                # Get best move
-                move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
-                # Move
+        
+        if path:
+            # Get best move
+            # move, bomb = self.abSearch(wrld, self.depthMax, float('-inf'), float('inf'))
+            closestMonsterDist=self.closestMonsterDist(wrld)
+            if closestMonsterDist<=5:
+                move, bomb = self.expectimaxSearch(wrld, self.depthMax)
                 dx, dy = move
-                self.move(dx, dy)
-                # Place bomb
+            else:
+                next_space = path.pop(1)
+                dx, dy = next_space[0] - self.x, next_space[1] - self.y
+                bomb = 0
+            # move, bomb = self.expectimaxSearch(wrld, self.depthMax)
+            # Move
+            
+            self.move(dx, dy)
+            # Place bomb
+            # self.place_bomb()
+            if bomb == 1:
                 self.place_bomb()
-                # if bomb == 1:
-                #     self.place_bomb()
 
     def abSearch(self, wrld, depth, alpha, beta):
         v = self.maxValue(wrld, depth, alpha, beta)
@@ -56,22 +61,25 @@ class AICharacter(CharacterEntity):
         return self.optimalAction
     
     def maxValue(self, wrld, depth, alpha, beta):
-        # print("maxValue")
+        print("maxValue")
         if wrld == None:
             return float('-inf')
+        print("world not none")
         if self.terminal(wrld, depth):
             return self.utility(wrld)
+        print("world not terminal")
         v = float('-inf')
         try:
             self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.RED + Back.RED)
         except:
             pass
+
         for action in self.actions(wrld):
             v = max(v, self.minValue(self.result(wrld, action, 0), depth-1, alpha, beta)) # was maxValue
             # print("value returned: ",v)
-            if v > alpha and depth == self.depthMax:
+            if v > alpha:
                 self.optimalAction = action
-                # print("set")
+                print("set")
             if v >= beta:
                 return v
             alpha = max(alpha, v)
@@ -98,17 +106,81 @@ class AICharacter(CharacterEntity):
             beta = min(beta, v)
         return v
     
+    def expectimaxSearch(self, wrld, depth):
+        v = self.expectimax(wrld, depth)
+        print("chose action with val: ",v)
+        return self.optimalAction
+
+    def expectiMaxValue(self, wrld, depth):
+        # print("maxValue")
+        if wrld == None:
+            return float('-inf')
+        # print("world not none")
+        if self.terminal(wrld, depth):
+            return self.utility(wrld)
+        # print("world not terminal")
+        v = float('-inf')
+        try:
+            self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.RED + Back.RED)
+        except:
+            pass
+        alpha = float('-inf')
+        for action in self.actions(wrld):
+            v = max(v, self.expectimax(self.result(wrld, action, 0), depth-1)) # was maxValue
+            print("action: ",action)
+            print("value returned: ",v)
+            if v > alpha and depth == self.depthMax:
+                self.optimalAction = action
+                print("set action: ",action)
+            alpha = max(alpha, v)
+        return v
+    
+
+    def expectimax(self, wrld, depth):
+        # print("depth: ",depth)
+        if wrld == None:
+            # print("world none, depth: ",depth)
+            return float('-inf')
+        
+        if self.terminal(wrld, depth):
+            return self.utility(wrld)
+        if depth % 2 == 0:
+            return self.expectiMaxValue(wrld, depth)
+        else:
+            return self.chanceValue(wrld, depth)
+        
+    def chanceValue(self, wrld, depth):
+        if wrld == None:
+            return float('-inf')
+        if self.terminal(wrld, depth):
+            return self.utility(wrld)
+        try:
+            self.set_cell_color(wrld.me(self).x,wrld.me(self).y, Fore.MAGENTA + Back.MAGENTA)
+        except:
+            pass
+        v = 0
+        actions = self.monsterActions(wrld)
+        if len(actions) == 0:
+            return float('-inf')
+        for action in actions:
+            v += self.expectimax(self.result(wrld, action, 0), depth-1)
+            print("v is: ",v)
+        print("expected value: ",v/len(actions))
+        return v/len(actions)
+    
+
+
     def actions(self, wrld):
         try:
             path = self.astar(wrld, [wrld.me(self).x, wrld.me(self).y], self.findExit(wrld))
             nextPoint = path.pop(1)
-            dx, dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            dx, dy = nextPoint[0] - wrld.me(self).x, nextPoint[1] - wrld.me(self).y
             actions = [(dx, dy), (-dx, -dy)]
             monsters=self.findMonsters(wrld)
             if monsters:
                 monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
-                if monsters and monDist<=3:
-                    actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
+                # if monDist<=3:
+                #     actions=[(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
 
             new_actions = []
             for action in actions:
@@ -117,25 +189,32 @@ class AICharacter(CharacterEntity):
             if self.findBomb(wrld) is None:
                 for i in range(len(actions)):
                     new_actions.append((actions[i], 1))
+            print("actions: ",new_actions)
             return new_actions
         except Exception as e:
-            return [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]
+            return []
     
     def result(self, wrld, action, mode):
-        try:
+        # try:
+            # print("result from: ",action)
             x,y = action[0]
             bomb = action[1]
             newWorld = wrld.from_world(wrld)
+            # print(newWorld.monsters.values())
             if bomb == 1:
                 newWorld.me(self).place_bomb()
-            if mode == 0 and self.findMonsters(wrld):
+            if mode == 0 and self.findMonsters(newWorld):
+                # m = next(iter(newWorld.monsters.values()))[0]
+                # print(m)
+                # m.move(0, 0)
                 for monster in newWorld.monsters.values():
-                    monster.move(0, 0)
+                    # print("monster: ",monster)
+                    monster[0].move(0, 0)
             newWorld.me(self).move(x, y)
             nextWorld, _ = newWorld.next()
             return nextWorld
-        except:
-            return None
+        # except:
+        #     return None
         # move = action[0]
         # place_bomb = action[1]
         # try:
@@ -160,21 +239,35 @@ class AICharacter(CharacterEntity):
         # except:
         #     return None
     
+    def closestMonsterDist(self, wrld):
+        monDist=float('inf')
+        monsters=self.findMonsters(wrld)
+        for monster in monsters:
+            dist = len(self.astar(wrld,(wrld.me(self).x, wrld.me(self).y), monster))
+            if dist<monDist:
+                monDist=dist
+        return monDist
+
     def monsterActions(self, wrld):
-        # monDist=float('inf')
-        # monsters=self.findMonsters(wrld)
-        # for monster in monsters:
-        #     dist = len(self.astar(wrld,(wrld.me(self).x, wrld.me(self).y), monster))
-        #     if dist<monDist:
-        #         monDist=dist
-        # if monDist<=2:
-        #     path=self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])
-        #     nextPoint = path.pop(1)
-        #     dx, dy = nextPoint[0] - monster[0], nextPoint[1] - monster[1]
-        #     return [((dx, dy),0)]
-        # else:
-        #     return [((1,0),0), ((0,1),0), ((-1,0),0), ((0,-1),0), ((1,1),0), ((-1,-1),0), ((1,-1),0), ((-1,1),0)]
-        return [((0,0),0)]
+        try:
+            if wrld == None:
+                return []
+            monDist=float('inf')
+            monsters=self.findMonsters(wrld)
+            for monster in monsters:
+                dist = len(self.astar(wrld,(wrld.me(self).x, wrld.me(self).y), monster))
+                if dist<monDist:
+                    monDist=dist
+            if monDist<=50:
+                path=self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])
+                nextPoint = path.pop(1)
+                dx, dy = nextPoint[0] - monster[0], nextPoint[1] - monster[1]
+                return [((dx, dy),0)]
+            else:
+                return [((1,0),0), ((0,1),0), ((-1,0),0), ((0,-1),0), ((1,1),0), ((-1,-1),0), ((1,-1),0), ((-1,1),0)]
+        except:
+            return []
+        # return [((0,0),0)]
         # charx, chary = self.findChar(wrld)
         # monsters=self.findMonsters(wrld)
         # actions=[]
@@ -190,16 +283,31 @@ class AICharacter(CharacterEntity):
         if depth == 0 or wrld.exit_at(self.x, self.y) or wrld.monsters_at(self.x, self.y) or wrld.explosion_at(self.x, self.y):
             return True
     
+    def terminal_test(self, wrld, depth):
+        if (depth == 0):
+            return "DEPTH"
+        if(wrld.exit_at(self.x, self.y)):
+            return "EXIT"
+        if(wrld.monsters_at(self.x, self.y) or wrld.explosion_at(self.x, self.y)):
+            return "DEAD"
+        return "CONTINUE"
+
     def utility(self, wrld):
+
         charx, chary = self.findChar(wrld)
-        # if charx==-1 and chary==-1:
-        #     return float('-inf')
+        if (charx == -1 and chary == -1):
+            print("found dead state")
+            return float('-inf')
+        if(wrld.exit_at(self.x, self.y)):
+            return wrld.time + (2) * wrld.time 
+        
         monsterCost = 0
         monsters = self.findMonsters(wrld)
         selfDistToGoal=self.wave[charx][chary]
+        
         monDist=float('inf')
         if monsters:
-            # monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
+            monDist=min([len(self.astar(wrld,monster,[wrld.me(self).x, wrld.me(self).y])) for monster in monsters])
             for monster in monsters:
                 dist = len(self.astar(wrld,(charx, chary), monster))
                 if dist <= 3:
@@ -209,8 +317,8 @@ class AICharacter(CharacterEntity):
                 monsterCost+=50
             monsterDistToGoal=min([self.wave[monster[0]][monster[1]] for monster in monsters])
             
-            if selfDistToGoal > monsterDistToGoal and monDist<=2:
-                monsterCost *=4
+            if selfDistToGoal > monsterDistToGoal:
+                monsterCost *= max(1, 5-monDist)
                 # selfDistToGoal+=20
             elif selfDistToGoal < monsterDistToGoal:
                 monsterCost -= 10
