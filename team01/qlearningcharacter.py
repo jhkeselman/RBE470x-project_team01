@@ -35,13 +35,16 @@ class InteractiveCharacter(CharacterEntity):
         if bomb:
             self.place_bomb()
 
-    def fmonsters(self, wrld):
+    def fmonsters(self, point, wavefront):
         return 0
     
-    def fexit(self, wrld):
-        return
+    def fexit(self, point, wavefront):
+        dis=wavefront[point[0]][point[1]]
+        #if dis==float('inf'):
+            #circle explore to nearest explorable tile add distance walls as weight.
+        return dis
     
-    def fexpl(self, wrld):
+    def fexpl(self, point, wavefront):
         return 0
 
     def astar(self, wrld, start, goal, withMonster=False, withBomb=False):
@@ -128,40 +131,6 @@ class InteractiveCharacter(CharacterEntity):
                             neighbors.append(newCell)
         return neighbors
                             
-
-        # if celly < rows - 1:
-        #     if wrld.wall_at(cellx, celly + 1) == 0 and wrld.explosion_at(cellx, celly + 1) is None and not self.checkExplode(
-        #             wrld, self.findBomb(wrld), (cellx, celly + 1)):
-        #         neighbors.append((cellx, celly + 1))
-        # if cellx < cols - 1:
-        #     if wrld.wall_at(cellx + 1, celly) == 0 and wrld.explosion_at(cellx + 1, celly) is None and not self.checkExplode(
-        #             wrld, self.findBomb(wrld), (cellx + 1, celly)):
-        #         neighbors.append((cellx + 1, celly))
-        #     if celly > 0:
-        #         if wrld.wall_at(cellx + 1, celly - 1) == 0 and wrld.explosion_at(cellx + 1, celly - 1) is None and not self.checkExplode(
-        #                 wrld, self.findBomb(wrld), (cellx + 1, celly - 1)):
-        #             neighbors.append((cellx + 1, celly - 1))
-        #         if celly < rows - 1:
-        #             if wrld.wall_at(cellx + 1, celly + 1) == 0 and wrld.explosion_at(cellx + 1, celly + 1) is None and not self.checkExplode(
-        #                     wrld, self.findBomb(wrld), (cellx + 1, celly + 1)):
-        #                 neighbors.append((cellx + 1, celly + 1))
-        # if celly > 0:
-        #     if wrld.wall_at(cellx, celly - 1) == 0 and wrld.explosion_at(cellx, celly - 1) is None and not self.checkExplode(
-        #             wrld, self.findBomb(wrld), (cellx, celly - 1)):
-        #         neighbors.append((cellx, celly - 1))
-        # if cellx > 0:
-        #     if wrld.wall_at(cellx - 1, celly) == 0 and wrld.explosion_at(cellx - 1, celly) is None and not self.checkExplode(
-        #             wrld, self.findBomb(wrld), (cellx - 1, celly)):
-        #         neighbors.append((cellx - 1, celly))
-        #     if celly > 0:
-        #         if wrld.wall_at(cellx - 1, celly - 1) == 0 and wrld.explosion_at(cellx - 1, celly - 1) is None and not self.checkExplode(
-        #                 wrld, self.findBomb(wrld), (cellx - 1, celly - 1)):
-        #             neighbors.append((cellx - 1, celly - 1))
-        #         if celly < rows - 1:
-        #             if wrld.wall_at(cellx - 1, celly + 1) == 0 and wrld.explosion_at(cellx - 1, celly + 1) is None and not self.checkExplode(
-        #                     wrld, self.findBomb(wrld), (cellx - 1, celly + 1)):
-        #                 neighbors.append((cellx - 1, celly + 1))
-        # return neighbors
     
     # Helper function to reconstruct the path from the explored dictionary
     def reconstructPath(self, explored: dict, start: tuple[int, int], goal: tuple[int, int]) -> list[list[int, int]]:   
@@ -185,7 +154,7 @@ class InteractiveCharacter(CharacterEntity):
             path = [list(start)] + path
             return path
     
-    def generateWavefront(self, wrld, start):
+    def generateWavefront(self, wrld, start,throughWalls=False):
         """
         Generates a wavefront grid representing the shortest path from the start position to each cell in the world.
 
@@ -199,10 +168,12 @@ class InteractiveCharacter(CharacterEntity):
         rows, cols = wrld.height(), wrld.width()
         wavefront = [[float('inf') for _ in range(rows)] for _ in range(cols)]
         wavefront[start[0]][start[1]] = 0
-        queue = [(0, start[0], start[1])]
+        queue = PriorityQueue()
+        queue.push((0, start[0], start[1]), 0)
+        
         directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
-        while queue:
-            cost, curCol,curRow = heappop(queue)
+        while not queue.empty():
+            cost, curCol,curRow = queue.pop()
             for direction in directions:
                 newCol, newRow = curCol + direction[0], curRow + direction[1]
                 if (0 <= newRow < rows) and (0 <= newCol < cols):# and (not wrld.wall_at(newCol, newRow)):
@@ -210,7 +181,12 @@ class InteractiveCharacter(CharacterEntity):
                         newCost = cost + 1
                         if newCost < wavefront[newCol][newRow]:
                             wavefront[newCol][newRow] = newCost
-                            heappush(queue, (newCost, newCol, newRow))
+                            queue.push((newCost, newCol, newRow), newCost)
+                    elif throughWalls:
+                        newCost = cost + 10
+                        if newCost < wavefront[newCol][newRow]:
+                            wavefront[newCol][newRow] = newCost
+                            queue.push((newCost, newCol, newRow), newCost)
         return wavefront
 
     def manhattan(self, p1, p2):
