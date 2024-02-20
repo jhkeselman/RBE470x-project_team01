@@ -6,9 +6,13 @@ from entity import CharacterEntity
 from colorama import Fore, Back
 import numpy as np
 from priority_queue import PriorityQueue
-
+from enum import Enum
+from heapq import heappush, heappop
 
 class InteractiveCharacter(CharacterEntity):
+
+    weights = []
+    
 
     def do(self, wrld):
         # Commands
@@ -31,7 +35,16 @@ class InteractiveCharacter(CharacterEntity):
         if bomb:
             self.place_bomb()
 
-    def astar(self, wrld, start, goal, withMonster=True):
+    def fmonsters(self, wrld):
+        return 0
+    
+    def fexit(self, wrld):
+        return
+    
+    def fexpl(self, wrld):
+        return 0
+
+    def astar(self, wrld, start, goal, withMonster=False, withBomb=False):
         """
         A* algorithm for finding the shortest path from start to goal in a given world.
 
@@ -50,7 +63,10 @@ class InteractiveCharacter(CharacterEntity):
         pq = PriorityQueue()
         pq.put((tuple(start), None, 0), 0)
         explored = {}
-        bombs = self.findBomb(wrld)
+        if withBomb:
+            bombs = self.findBomb(wrld)
+        if withMonster:
+            monsters = self.findMonsters(wrld)
         while not found and not pq.empty():
             element = pq.get()
             exploring = element[0]
@@ -63,23 +79,23 @@ class InteractiveCharacter(CharacterEntity):
             neighbors = self.getNeighbors(wrld, exploring)
             for neighbor in neighbors:
                 if explored.get(neighbor) is None or explored.get(neighbor)[2] > g + 1:
-                    monstersCost = 0
-                    if neighbor == bombs:
-                        monstersCost += 1000
+                    penalty = 0
+                    if withBomb:
+                        if neighbor in bombs:
+                            penalty += 1000
                     if withMonster:
-                        monsters = self.findMonsters(wrld)
                         for monster in monsters:
-                            dist = self.heuristic((neighbor[0], neighbor[1]), monster)
+                            dist = self.manhattan((neighbor[0], neighbor[1]), monster)
                             if dist <= 3:
-                                monstersCost += 2 * (4 - dist)
-                    f = g + 1 + self.heuristic(neighbor, goal) + monstersCost
+                                penalty += 2 * (4 - dist)
+                    f = g + 1 + self.manhattan(neighbor, goal) + penalty
                     pq.put((neighbor, exploring, g + 1), f)
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
         return path
     
     #Helper function to return the walkable neighbors 
-    def getNeighbors(self, wrld, cell):
+    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, withWalls=False, turns=1):
         """
         Returns a list of neighboring cells that are accessible from the given cell.
 
@@ -96,44 +112,56 @@ class InteractiveCharacter(CharacterEntity):
         rows, cols = wrld.height(), wrld.width()
 
         if cellx < 0 or cellx >= cols or celly < 0 or celly >= rows:
-            return neighbors
+            return neighbors    
 
         if wrld.wall_at(cellx, celly) == 1:
             return neighbors
 
-        if celly < rows - 1:
-            if wrld.wall_at(cellx, celly + 1) == 0 and wrld.explosion_at(cellx, celly + 1) is None and not self.checkExplode(
-                    wrld, self.findBomb(wrld), (cellx, celly + 1)):
-                neighbors.append((cellx, celly + 1))
-        if cellx < cols - 1:
-            if wrld.wall_at(cellx + 1, celly) == 0 and wrld.explosion_at(cellx + 1, celly) is None and not self.checkExplode(
-                    wrld, self.findBomb(wrld), (cellx + 1, celly)):
-                neighbors.append((cellx + 1, celly))
-            if celly > 0:
-                if wrld.wall_at(cellx + 1, celly - 1) == 0 and wrld.explosion_at(cellx + 1, celly - 1) is None and not self.checkExplode(
-                        wrld, self.findBomb(wrld), (cellx + 1, celly - 1)):
-                    neighbors.append((cellx + 1, celly - 1))
-                if celly < rows - 1:
-                    if wrld.wall_at(cellx + 1, celly + 1) == 0 and wrld.explosion_at(cellx + 1, celly + 1) is None and not self.checkExplode(
-                            wrld, self.findBomb(wrld), (cellx + 1, celly + 1)):
-                        neighbors.append((cellx + 1, celly + 1))
-        if celly > 0:
-            if wrld.wall_at(cellx, celly - 1) == 0 and wrld.explosion_at(cellx, celly - 1) is None and not self.checkExplode(
-                    wrld, self.findBomb(wrld), (cellx, celly - 1)):
-                neighbors.append((cellx, celly - 1))
-        if cellx > 0:
-            if wrld.wall_at(cellx - 1, celly) == 0 and wrld.explosion_at(cellx - 1, celly) is None and not self.checkExplode(
-                    wrld, self.findBomb(wrld), (cellx - 1, celly)):
-                neighbors.append((cellx - 1, celly))
-            if celly > 0:
-                if wrld.wall_at(cellx - 1, celly - 1) == 0 and wrld.explosion_at(cellx - 1, celly - 1) is None and not self.checkExplode(
-                        wrld, self.findBomb(wrld), (cellx - 1, celly - 1)):
-                    neighbors.append((cellx - 1, celly - 1))
-                if celly < rows - 1:
-                    if wrld.wall_at(cellx - 1, celly + 1) == 0 and wrld.explosion_at(cellx - 1, celly + 1) is None and not self.checkExplode(
-                            wrld, self.findBomb(wrld), (cellx - 1, celly + 1)):
-                        neighbors.append((cellx - 1, celly + 1))
+        directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
+        
+        for dir in directions:
+            newCell = (cellx + dir[0], celly + dir[1])
+            if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
+                if not withWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
+                    if not withBomb or not self.checkExplode(wrld, self.findBomb(wrld), newCell, turns):
+                        if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
+                            neighbors.append(newCell)
         return neighbors
+                            
+
+        # if celly < rows - 1:
+        #     if wrld.wall_at(cellx, celly + 1) == 0 and wrld.explosion_at(cellx, celly + 1) is None and not self.checkExplode(
+        #             wrld, self.findBomb(wrld), (cellx, celly + 1)):
+        #         neighbors.append((cellx, celly + 1))
+        # if cellx < cols - 1:
+        #     if wrld.wall_at(cellx + 1, celly) == 0 and wrld.explosion_at(cellx + 1, celly) is None and not self.checkExplode(
+        #             wrld, self.findBomb(wrld), (cellx + 1, celly)):
+        #         neighbors.append((cellx + 1, celly))
+        #     if celly > 0:
+        #         if wrld.wall_at(cellx + 1, celly - 1) == 0 and wrld.explosion_at(cellx + 1, celly - 1) is None and not self.checkExplode(
+        #                 wrld, self.findBomb(wrld), (cellx + 1, celly - 1)):
+        #             neighbors.append((cellx + 1, celly - 1))
+        #         if celly < rows - 1:
+        #             if wrld.wall_at(cellx + 1, celly + 1) == 0 and wrld.explosion_at(cellx + 1, celly + 1) is None and not self.checkExplode(
+        #                     wrld, self.findBomb(wrld), (cellx + 1, celly + 1)):
+        #                 neighbors.append((cellx + 1, celly + 1))
+        # if celly > 0:
+        #     if wrld.wall_at(cellx, celly - 1) == 0 and wrld.explosion_at(cellx, celly - 1) is None and not self.checkExplode(
+        #             wrld, self.findBomb(wrld), (cellx, celly - 1)):
+        #         neighbors.append((cellx, celly - 1))
+        # if cellx > 0:
+        #     if wrld.wall_at(cellx - 1, celly) == 0 and wrld.explosion_at(cellx - 1, celly) is None and not self.checkExplode(
+        #             wrld, self.findBomb(wrld), (cellx - 1, celly)):
+        #         neighbors.append((cellx - 1, celly))
+        #     if celly > 0:
+        #         if wrld.wall_at(cellx - 1, celly - 1) == 0 and wrld.explosion_at(cellx - 1, celly - 1) is None and not self.checkExplode(
+        #                 wrld, self.findBomb(wrld), (cellx - 1, celly - 1)):
+        #             neighbors.append((cellx - 1, celly - 1))
+        #         if celly < rows - 1:
+        #             if wrld.wall_at(cellx - 1, celly + 1) == 0 and wrld.explosion_at(cellx - 1, celly + 1) is None and not self.checkExplode(
+        #                     wrld, self.findBomb(wrld), (cellx - 1, celly + 1)):
+        #                 neighbors.append((cellx - 1, celly + 1))
+        # return neighbors
     
     # Helper function to reconstruct the path from the explored dictionary
     def reconstructPath(self, explored: dict, start: tuple[int, int], goal: tuple[int, int]) -> list[list[int, int]]:   
@@ -185,16 +213,16 @@ class InteractiveCharacter(CharacterEntity):
                             heappush(queue, (newCost, newCol, newRow))
         return wavefront
 
-    def heuristic(self, p1, p2):
+    def manhattan(self, p1, p2):
         """
-        Calculate the heuristic value between two points.
+        Calculate the manhattan value between two points.
 
         Args:
             p1 (tuple): The coordinates of the first point.
             p2 (tuple): The coordinates of the second point.
 
         Returns:
-            int: The heuristic value between the two points.
+            int: The manhattan value between the two points.
         """
         return sum([abs(p2[0] - p1[0]), abs(p2[1] - p1[1])])
     
@@ -280,7 +308,7 @@ class InteractiveCharacter(CharacterEntity):
                     return (col, row)
         return None
 
-    def checkExplode(self, wrld, bomb, tile):
+    def checkExplode(self, wrld, bomb, tile,turns=1):
         """
         Checks if a bomb explosion will reach a given tile.
 
@@ -294,6 +322,6 @@ class InteractiveCharacter(CharacterEntity):
         """
         if bomb is None:
             return False
-        if wrld.bomb_at(bomb[0], bomb[1]).timer <= 1:
-            if (abs(tile[0] - bomb[0]) <= 5 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 5 and tile[0] == bomb[0]):
+        if wrld.bomb_at(bomb[0], bomb[1]).timer <= turns:
+            if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
                 return True
