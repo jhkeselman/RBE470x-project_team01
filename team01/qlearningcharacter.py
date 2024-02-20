@@ -9,7 +9,7 @@ from priority_queue import PriorityQueue
 from enum import Enum
 from heapq import heappush, heappop
 
-class InteractiveCharacter(CharacterEntity):
+class QLearningCharacter(CharacterEntity):
 
     weights = []
     
@@ -18,6 +18,12 @@ class InteractiveCharacter(CharacterEntity):
         # Commands
         dx, dy = 0, 0
         bomb = False
+        goal=self.findExit(wrld)
+        wavefront = self.generateWavefront(wrld, goal,True)
+        flipwave=np.transpose(wavefront)
+        for i in range(len(flipwave)):
+            print(flipwave[i])
+        
         # Handle input
         for c in input("How would you like to move (w=up,a=left,s=down,d=right,b=bomb)? "):
             if 'w' == c:
@@ -169,24 +175,31 @@ class InteractiveCharacter(CharacterEntity):
         wavefront = [[float('inf') for _ in range(rows)] for _ in range(cols)]
         wavefront[start[0]][start[1]] = 0
         queue = PriorityQueue()
-        queue.push((0, start[0], start[1]), 0)
+        queue.put((0, (start[0], start[1])), 0)
         
         directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
         while not queue.empty():
-            cost, curCol,curRow = queue.pop()
+            # print(queue.get_queue())
+            element = queue.get()
+            # print("element",element)
+            cost = element[0]
+            curCol, curRow = element[1]
+            wavefront[curCol][curRow] = cost
             for direction in directions:
                 newCol, newRow = curCol + direction[0], curRow + direction[1]
                 if (0 <= newRow < rows) and (0 <= newCol < cols):# and (not wrld.wall_at(newCol, newRow)):
+                    # print("newCol,newRow",newCol,newRow)
                     if wrld.wall_at(newCol, newRow)==0:
                         newCost = cost + 1
                         if newCost < wavefront[newCol][newRow]:
-                            wavefront[newCol][newRow] = newCost
-                            queue.push((newCost, newCol, newRow), newCost)
+                            # wavefront[newCol][newRow] = newCost
+                            queue.put((newCost, (newCol, newRow)), newCost)
                     elif throughWalls:
-                        newCost = cost + 10
+                        # print("through walls",newCol,newRow,wrld.wall_at(newCol, newRow))
+                        newCost = cost + 1 + wrld.bomb_time
                         if newCost < wavefront[newCol][newRow]:
-                            wavefront[newCol][newRow] = newCost
-                            queue.push((newCost, newCol, newRow), newCost)
+                            # wavefront[newCol][newRow] = newCost
+                            queue.put((newCost, (newCol, newRow)), newCost)
         return wavefront
 
     def manhattan(self, p1, p2):
