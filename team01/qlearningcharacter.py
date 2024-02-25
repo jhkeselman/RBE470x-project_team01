@@ -22,6 +22,8 @@ class QLearningCharacter(CharacterEntity):
     num_features = len(features)
     weights = []
 
+    actions = [[[0,1],1], [[0,-1],1], [[-1,0],1], [[1,0],1], [[0,0],1]] # Static for now
+
     # Store values first time world is seen
     init_flag = False
     exit_wavefront = None # Wavefront from exit, ignores walls  
@@ -35,8 +37,11 @@ class QLearningCharacter(CharacterEntity):
     
     def __init__(self, name, color, x, y):
         super().__init__(name, color, x, y)
-        for i in range(self.num_features):
-            self.weights.append(random.random())
+        try:
+            self.weights = np.load("weights.npy")
+        except:
+            for i in range(self.num_features):
+                self.weights.append(random.random())
         
 
     def do(self, wrld):
@@ -51,26 +56,71 @@ class QLearningCharacter(CharacterEntity):
         
         # goal=self.findExit(wrld)
         # wavefront = self.generateWavefront(wrld, self.goal,True)
-        self.reachable = self.reachableCells(wrld, (self.x, self.y))
+        self.position = (self.y, self.x)
+        self.reachable = self.reachableCells(wrld, self.position)
+
+        print("Feature values: ",self.getFeatureValues(wrld))
+        print("Weights: ",self.weights)
 
         dx, dy = 0, 0
         bomb = False
         # Handle input
-        for c in input("How would you like to move (w=up,a=left,s=down,d=right,b=bomb)? "):
-            if 'w' == c:
-                dy -= 1
-            if 'a' == c:
-                dx -= 1
-            if 's' == c:
-                dy += 1
-            if 'd' == c:
-                dx += 1
-            if 'b' == c:
-                bomb = True
+        # for c in input("How would you like to move (w=up,a=left,s=down,d=right,b=bomb)? "):
+        #     if 'w' == c:
+        #         dy -= 1
+        #     if 'a' == c:
+        #         dx -= 1
+        #     if 's' == c:
+        #         dy += 1
+        #     if 'd' == c:
+        #         dx += 1
+        #     if 'b' == c:
+        #         bomb = True
+
+        action = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        print("=================================================================")
+        print("Picked Action: ",action)
+        if action is None:
+            print("Random action")
+            action = self.actions[random.randint(0,4)]
+        else:
+            action = action[1]
+        dx, dy = action[0]
+        bomb = action[1]
+        
+        delta = self.getDelta(wrld, action)
+        self.updateWeights(self.getFeatureValues(wrld), delta)
+        np.save("weights.npy",self.weights)
+
+        print("Action: ",action)
+        
+
         # Execute commands
         self.move(dx, dy)
         if bomb:
             self.place_bomb()
+
+    def getDelta(self, wrld, action_taken):
+        gamma = 0.9
+        # print("Args: ",[(wrld, action) for action in self.actions])
+        _,arg_max = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        r = wrld.scores["me"]
+        return r + gamma * self.getQValue(wrld, arg_max) - self.getQValue(wrld, action_taken)
+
+    def updateWeights(self, feature_values, delta):
+        alpha = 0.1
+        for i in range(self.num_features):
+            self.weights[i] += alpha * delta * feature_values[i]
+    
+    def getQValue(self, wrld, action):
+        print("Getting result of action: ",action)
+        next = self.result(wrld, action)
+        if next is None:
+            return 0
+        print("Next world: ",next)
+        print("From action: ",action)
+        print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
+        return np.dot(self.weights, self.getFeatureValues(next))
 
     def getFeatureValues(self, wrld):
         """
@@ -90,26 +140,32 @@ class QLearningCharacter(CharacterEntity):
         return features
 
     def featureValue(self,wrld,feat_name):
+        pos = self.findChar(wrld)
+
+        # print("Feature value in world: ",wrld)
         if feat_name=="MONSTER_DISTANCE":
             closest = float('inf')
             for monster in self.findMonsters(wrld):
                 val = self.astar(wrld, self.position, monster, True, False)
                 if val < closest:
-                    best = val
-            return map(best,0,self.world_size,0,1)
+                    closest = val
+            return np.interp(closest,[0,self.world_size],[0,1])
         if feat_name=="EXIT_DISTANCE":
-            dist = self.flipwave[self.position[0]][self.position[1]]
-            return map(dist,0,self.world_size,0,1)
+            dist = self.flipwave[pos[0]][pos[1]]
+            print("Exit distance: ",dist)
+            return np.interp(dist,[0,self.world_size],[0,1])
         if feat_name=="EXPLORABLE_DISTANCE_FROM_EXIT":
             best = float('inf')
-            for point in self.reachable:
+            for point in self.reachableCells(wrld, pos):  # TODO make sure uses new world
                 val = self.flipwave[point[0]][point[1]]
                 if val < best:
                     best = val
-            return map(best,0,self.world_size,0,1)
+            return np.interp(best,[0,self.world_size],[0,1])
         if feat_name=="BOMB_DISTANCE":
-            dist = self.astar(wrld, self.position, self.findBomb(wrld))
-            return map(dist,0,self.world_size,0,1)
+            dist = self.astar(wrld, pos, self.findBomb(wrld))
+            if dist == []:
+                return 1.0
+            return np.interp(dist,[0,self.world_size],[0,1])
         if feat_name=="WALL_DISTANCE":
             return 0
         if feat_name=="EXPLOSION_DISTANCE":
@@ -128,7 +184,7 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             int: The number of reachable cells from the given point.
         """
-        wavefront = self.generateWavefront(wrld, point)
+        wavefront = self.generateWavefront(wrld, (point[1],point[0]))
         reachable = []
         for row in range(len(wavefront)):
             for col in range(len(wavefront[0])):
@@ -164,7 +220,7 @@ class QLearningCharacter(CharacterEntity):
             exploring = element[0]
             g = element[2]
             explored[exploring] = element
-            if exploring == tuple(goal):
+            if exploring == tuple(self.goal):
                 found = True
                 break
 
@@ -180,10 +236,10 @@ class QLearningCharacter(CharacterEntity):
                             dist = self.manhattan((neighbor[0], neighbor[1]), monster)
                             if dist <= 3:
                                 penalty += 2 * (4 - dist)
-                    f = g + 1 + self.manhattan(neighbor, goal) + penalty
+                    f = g + 1 + self.manhattan(neighbor, self.goal) + penalty
                     pq.put((neighbor, exploring, g + 1), f)
         if found:
-            path = self.reconstructPath(explored, tuple(start), tuple(goal))
+            path = self.reconstructPath(explored, tuple(start), tuple(self.goal))
         return path
     
     #Helper function to return the walkable neighbors 
@@ -242,7 +298,7 @@ class QLearningCharacter(CharacterEntity):
             path = [list(start)] + path
             return path
     
-    def generateWavefront(self, wrld, start,throughWalls=False):
+    def generateWavefront(self, wrld, start ,throughWalls=False):
         """
         Generates a wavefront grid representing the shortest path from the start position to each cell in the world.
 
@@ -379,6 +435,7 @@ class QLearningCharacter(CharacterEntity):
         return None
 
     def checkExplode(self, wrld, bomb, tile,turns=1):
+
         """
         Checks if a bomb explosion will reach a given tile.
 
@@ -395,3 +452,56 @@ class QLearningCharacter(CharacterEntity):
         if wrld.bomb_at(bomb[0], bomb[1]).timer <= turns:
             if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
                 return True
+
+    def result(self, wrld, action):
+        """
+        Applies the given action to the world state and returns the resulting world state.
+
+        Args:
+            wrld (World): The current world state.
+            action (tuple): The action to be applied, consisting of the movement coordinates (x, y)
+                            and a flag indicating whether to place a bomb (1) or not (0).
+
+        Returns:
+            World: The resulting world state after applying the action.
+            None: If an exception occurs during the action application.
+        """
+        newWorld = wrld.from_world(wrld)
+        try:
+            x, y = action[0]
+            bomb = action[1]
+            if bomb == 1:
+                newWorld.me(self).place_bomb()
+                print("Placed bomb")
+            newWorld.me(self).move(x, y)
+            print("Moved")
+            nextWorld, _ = newWorld.next()
+            print("Score change: ",nextWorld.scores["me"] - newWorld.scores["me"])
+            print("Value change: ",self.getFeatureValues(newWorld),self.getFeatureValues(nextWorld))
+            print("Posistion change: ",nextWorld.me(self).x - newWorld.me(self).x, nextWorld.me(self).y - newWorld.me(self).y)
+            return nextWorld
+        except Exception as e:
+            print("Layer 1: ",e)
+            print("Action: ",action)
+            print("World: ====================================================",newWorld)
+            newWorld.printit()
+            try:
+                nextWorld,_ = newWorld.next()
+                return nextWorld
+            except Exception as e:
+                print("Layer 2: ",e)
+                print("World: ",newWorld)
+                return None
+    
+    @staticmethod     
+    def argMax(args,util_function):
+        max_val = 0
+        arg_max = args[0] # Was None
+        # print(args)
+        for arg in args:
+            val = util_function(*arg)
+            print(val)
+            if(val > max_val):
+                max_val = val
+                arg_max = arg
+        return arg_max
