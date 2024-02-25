@@ -18,11 +18,11 @@ import random
 
 class QLearningCharacter(CharacterEntity):
 
-    features = ["MONSTER_DISTANCE", "EXIT_DISTANCE", "EXPLORABLE_DISTANCE_FROM_EXIT", "BOMB_DISTANCE", "WALL_DISTANCE", "EXPLOSION_DISTANCE"]
+    features = ["MONSTER_DISTANCE", "EXIT_DISTANCE", "EXPLORABLE_DISTANCE_FROM_EXIT", "BOMB_DISTANCE", "WALL_DISTANCE", "EXPLOSION_DISTANCE","BOMB_PLACED"]
     num_features = len(features)
     weights = []
 
-    actions = [[[0,1],1], [[0,-1],1], [[-1,0],1], [[1,0],1], [[0,0],1]] # Static for now
+    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]] # Static for now
 
     # Store values first time world is seen
     init_flag = False
@@ -59,7 +59,7 @@ class QLearningCharacter(CharacterEntity):
         self.position = (self.y, self.x)
         self.reachable = self.reachableCells(wrld, self.position)
 
-        print("Feature values: ",self.getFeatureValues(wrld))
+        # print("Feature values: ",self.getFeatureValues(wrld))
         print("Weights: ",self.weights)
 
         dx, dy = 0, 0
@@ -78,9 +78,9 @@ class QLearningCharacter(CharacterEntity):
         #         bomb = True
 
         action = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
-        print("=================================================================")
+        # print("=================================================================")
         print("Picked Action: ",action)
-        if action is None:
+        if action is None or random.random() < 0.3:
             print("Random action")
             action = self.actions[random.randint(0,4)]
         else:
@@ -92,7 +92,7 @@ class QLearningCharacter(CharacterEntity):
         self.updateWeights(self.getFeatureValues(wrld), delta)
         np.save("weights.npy",self.weights)
 
-        print("Action: ",action)
+        # print("Action: ",action)
         
 
         # Execute commands
@@ -103,22 +103,28 @@ class QLearningCharacter(CharacterEntity):
     def getDelta(self, wrld, action_taken):
         gamma = 0.9
         # print("Args: ",[(wrld, action) for action in self.actions])
-        _,arg_max = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        
+        arg_max = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        if arg_max is None:
+            arg_max = self.actions[random.randint(0,4)]
+        else:
+            arg_max = arg_max[1]
+
         r = wrld.scores["me"]
         return r + gamma * self.getQValue(wrld, arg_max) - self.getQValue(wrld, action_taken)
 
     def updateWeights(self, feature_values, delta):
         alpha = 0.1
         for i in range(self.num_features):
-            self.weights[i] += alpha * delta * feature_values[i]
+            self.weights[i] += alpha * -delta * feature_values[i]
     
     def getQValue(self, wrld, action):
-        print("Getting result of action: ",action)
+        # print("Getting result of action: ",action)
         next = self.result(wrld, action)
         if next is None:
             return 0
-        print("Next world: ",next)
-        print("From action: ",action)
+        # print("Next world: ",next)
+        # print("From action: ",action)
         print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
         return np.dot(self.weights, self.getFeatureValues(next))
 
@@ -146,13 +152,13 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="MONSTER_DISTANCE":
             closest = float('inf')
             for monster in self.findMonsters(wrld):
-                val = self.astar(wrld, self.position, monster, True, False)
+                val = len(self.astar(wrld, self.position, monster, True, False))
                 if val < closest:
                     closest = val
             return np.interp(closest,[0,self.world_size],[0,1])
         if feat_name=="EXIT_DISTANCE":
             dist = self.flipwave[pos[0]][pos[1]]
-            print("Exit distance: ",dist)
+            # print("Exit distance: ",dist)
             return np.interp(dist,[0,self.world_size],[0,1])
         if feat_name=="EXPLORABLE_DISTANCE_FROM_EXIT":
             best = float('inf')
@@ -169,6 +175,12 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="WALL_DISTANCE":
             return 0
         if feat_name=="EXPLOSION_DISTANCE":
+            if self.checkExplode(wrld, self.findBomb(wrld), pos):
+                return 1.0
+            return 0
+        if feat_name=="BOMB_PLACED":
+            if self.findBomb(wrld) is not None:
+                return 1.0
             return 0
         return 0    
 
@@ -317,23 +329,20 @@ class QLearningCharacter(CharacterEntity):
         
         directions = [(1, 1), (1, -1), (-1, -1), (-1, 1),(0, 1), (1, 0), (0, -1), (-1, 0)]
         while not queue.empty():
-            # print(queue.get_queue())
             element = queue.get()
-            # print("element",element)
             cost = element[0]
             curCol, curRow = element[1]
             wavefront[curCol][curRow] = cost
             for direction in directions:
                 newCol, newRow = curCol + direction[0], curRow + direction[1]
                 if (0 <= newRow < rows) and (0 <= newCol < cols):# and (not wrld.wall_at(newCol, newRow)):
-                    # print("newCol,newRow",newCol,newRow)
                     if wrld.wall_at(newCol, newRow)==0:
                         newCost = cost + 1
                         if newCost < wavefront[newCol][newRow]:
                             # wavefront[newCol][newRow] = newCost
                             queue.put((newCost, (newCol, newRow)), newCost)
                     elif throughWalls:
-                        # print("through walls",newCol,newRow,wrld.wall_at(newCol, newRow))
+                      
                         newCost = cost + 1 + wrld.bomb_time
                         if newCost < wavefront[newCol][newRow]:
                             # wavefront[newCol][newRow] = newCost
@@ -472,32 +481,32 @@ class QLearningCharacter(CharacterEntity):
             bomb = action[1]
             if bomb == 1:
                 newWorld.me(self).place_bomb()
-                print("Placed bomb")
+                # print("Placed bomb")
             newWorld.me(self).move(x, y)
-            print("Moved")
+            # print("Moved")
             nextWorld, _ = newWorld.next()
-            print("Score change: ",nextWorld.scores["me"] - newWorld.scores["me"])
+            # print("Score change: ",nextWorld.scores["me"] - newWorld.scores["me"])
             print("Value change: ",self.getFeatureValues(newWorld),self.getFeatureValues(nextWorld))
-            print("Posistion change: ",nextWorld.me(self).x - newWorld.me(self).x, nextWorld.me(self).y - newWorld.me(self).y)
+            # print("Posistion change: ",nextWorld.me(self).x - newWorld.me(self).x, nextWorld.me(self).y - newWorld.me(self).y)
             return nextWorld
         except Exception as e:
-            print("Layer 1: ",e)
-            print("Action: ",action)
-            print("World: ====================================================",newWorld)
+            # print("Layer 1: ",e)
+            # print("Action: ",action)
+            # print("World: ====================================================",newWorld)
             newWorld.printit()
             try:
                 nextWorld,_ = newWorld.next()
                 return nextWorld
             except Exception as e:
-                print("Layer 2: ",e)
-                print("World: ",newWorld)
+                # print("Layer 2: ",e)
+                # print("World: ",newWorld)
                 return None
     
     @staticmethod     
     def argMax(args,util_function):
-        max_val = 0
-        arg_max = args[0] # Was None
-        # print(args)
+        max_val = float('-inf')
+        arg_max = None # Was None
+        print(args)
         for arg in args:
             val = util_function(*arg)
             print(val)
