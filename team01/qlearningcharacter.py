@@ -8,22 +8,53 @@ import numpy as np
 from priority_queue import PriorityQueue
 from enum import Enum
 from heapq import heappush, heappop
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+
+import random
 
 class QLearningCharacter(CharacterEntity):
 
+    features = ["MONSTER_DISTANCE", "EXIT_DISTANCE", "EXPLORABLE_DISTANCE_FROM_EXIT", "BOMB_DISTANCE", "WALL_DISTANCE", "EXPLOSION_DISTANCE"]
+    num_features = len(features)
     weights = []
+
+    # Store values first time world is seen
+    init_flag = False
+    exit_wavefront = None # Wavefront from exit, ignores walls  
+    world_size = None # Number of cells in the world. Used to normalize distance values
+    goal = None # Coordinates of the exit
+    flipwave = None # Transpose of wavefront
+
+    # Store values that change every turn
+    position = None # Current position
+    reachable = None # List of reachable cells from current position
     
+    def __init__(self, name, color, x, y):
+        super().__init__(name, color, x, y)
+        for i in range(self.num_features):
+            self.weights.append(random.random())
+        
 
     def do(self, wrld):
+        if not self.init_flag:
+            self.world_size = wrld.width() * wrld.height()
+            self.goal = self.findExit(wrld)
+            self.exit_wavefront = self.generateWavefront(wrld, self.goal,True)
+            self.flipwave=np.transpose(self.exit_wavefront)
+            self.init_flag = True
+
         # Commands
+        
+        # goal=self.findExit(wrld)
+        # wavefront = self.generateWavefront(wrld, self.goal,True)
+        self.reachable = self.reachableCells(wrld, (self.x, self.y))
+
         dx, dy = 0, 0
         bomb = False
-        goal=self.findExit(wrld)
-        wavefront = self.generateWavefront(wrld, goal,True)
-        flipwave=np.transpose(wavefront)
-        for i in range(len(flipwave)):
-            print(flipwave[i])
-        
         # Handle input
         for c in input("How would you like to move (w=up,a=left,s=down,d=right,b=bomb)? "):
             if 'w' == c:
@@ -41,17 +72,69 @@ class QLearningCharacter(CharacterEntity):
         if bomb:
             self.place_bomb()
 
-    def fmonsters(self, point, wavefront):
-        return 0
-    
-    def fexit(self, point, wavefront):
-        dis=wavefront[point[0]][point[1]]
-        #if dis==float('inf'):
-            #circle explore to nearest explorable tile add distance walls as weight.
-        return dis
-    
-    def fexpl(self, point, wavefront):
-        return 0
+    def getFeatureValues(self, wrld):
+        """
+        Returns the feature values of the given world state.
+
+        Args:
+            wrld (World): The game world.
+            point (tuple): The coordinates of the point.
+            wavefront (list): The wavefront grid.
+
+        Returns:
+            list: The features of the point.
+        """
+        features = []
+        for i in range(self.num_features):
+            features.append(self.featureValue(wrld, self.features[i]))
+        return features
+
+    def featureValue(self,wrld,feat_name):
+        if feat_name=="MONSTER_DISTANCE":
+            closest = float('inf')
+            for monster in self.findMonsters(wrld):
+                val = self.astar(wrld, self.position, monster, True, False)
+                if val < closest:
+                    best = val
+            return map(best,0,self.world_size,0,1)
+        if feat_name=="EXIT_DISTANCE":
+            dist = self.flipwave[self.position[0]][self.position[1]]
+            return map(dist,0,self.world_size,0,1)
+        if feat_name=="EXPLORABLE_DISTANCE_FROM_EXIT":
+            best = float('inf')
+            for point in self.reachable:
+                val = self.flipwave[point[0]][point[1]]
+                if val < best:
+                    best = val
+            return map(best,0,self.world_size,0,1)
+        if feat_name=="BOMB_DISTANCE":
+            dist = self.astar(wrld, self.position, self.findBomb(wrld))
+            return map(dist,0,self.world_size,0,1)
+        if feat_name=="WALL_DISTANCE":
+            return 0
+        if feat_name=="EXPLOSION_DISTANCE":
+            return 0
+        return 0    
+
+    # Copilot code. Make sure to test
+    def reachableCells(self, wrld, point):
+        """
+        Returns the number of reachable cells from the given point.
+
+        Args:
+            wrld (World): The game world.
+            point (tuple): The coordinates of the point.
+
+        Returns:
+            int: The number of reachable cells from the given point.
+        """
+        wavefront = self.generateWavefront(wrld, point)
+        reachable = []
+        for row in range(len(wavefront)):
+            for col in range(len(wavefront[0])):
+                if wavefront[row][col] < float('inf'):
+                    reachable.append((col, row))
+        return reachable
 
     def astar(self, wrld, start, goal, withMonster=False, withBomb=False):
         """
@@ -137,7 +220,6 @@ class QLearningCharacter(CharacterEntity):
                             neighbors.append(newCell)
         return neighbors
                             
-    
     # Helper function to reconstruct the path from the explored dictionary
     def reconstructPath(self, explored: dict, start: tuple[int, int], goal: tuple[int, int]) -> list[list[int, int]]:   
             """
@@ -214,7 +296,6 @@ class QLearningCharacter(CharacterEntity):
             int: The manhattan value between the two points.
         """
         return sum([abs(p2[0] - p1[0]), abs(p2[1] - p1[1])])
-    
     
     def openDist(self, p1, p2):
         """
