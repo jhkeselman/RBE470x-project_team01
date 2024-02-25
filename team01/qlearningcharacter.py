@@ -23,7 +23,7 @@ class QLearningCharacter(CharacterEntity):
     weights = []
     
 
-    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]] # Static for now
+    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]# Static for now
 
     # Store values first time world is seen
     init_flag = False
@@ -118,7 +118,7 @@ class QLearningCharacter(CharacterEntity):
         return r + gamma * self.getQValue(wrld, arg_max) - self.getQValue(wrld, action_taken)
 
     def updateWeights(self, feature_values, delta):
-        alpha = 0.1
+        alpha = 0.2
         for i in range(self.num_features):
             self.weights[i] += alpha * -delta * feature_values[i]
     
@@ -168,9 +168,10 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="EXPLORABLE_DISTANCE_FROM_EXIT":
             best = float('inf')
             for point in self.reachableCells(wrld, pos):  # TODO make sure uses new world
-                val = self.exit_wavefront[point[0]][point[1]]
-                if val < best:
-                    best = val
+                if (point[0] > 0 and point[0] < wrld.width() and point[1] > 0 and point[1] < wrld.height()):
+                    val = self.exit_wavefront[point[0]][point[1]]
+                    if val < best:
+                        best = val
             return np.interp(best,[0,self.world_size],[0,1])
         if feat_name=="BOMB_DISTANCE":
             dist = self.astar(wrld, pos, self.findBomb(wrld))
@@ -180,7 +181,7 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="WALL_DISTANCE":
             return 0
         if feat_name=="EXPLOSION_DISTANCE":
-            if self.checkExplode(wrld, self.findBomb(wrld), pos)>=0:
+            if self.checkExplode(wrld, self.findBomb(wrld), pos) and self.checkExplode(wrld, self.findBomb(wrld), pos) >= 0:
                 return 1.0
             return 0
         if feat_name=="BOMB_PLACED":
@@ -201,13 +202,19 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             int: The number of reachable cells from the given point.
         """
-        wavefront = self.generateWavefront(wrld, (point[0],point[1]))
-        reachable = []
-        for row in range(len(wavefront)):
-            for col in range(len(wavefront[0])):
-                if wavefront[row][col] < float('inf'):
-                    reachable.append((col, row))
-        return reachable
+        try:
+            newWorld = wrld.from_world(wrld)
+            nx, ny = newWorld.me(self).x, newWorld.me(self).y
+            wavefront = self.generateWavefront(newWorld, (nx, ny))
+            reachable = []
+            for row in range(len(wavefront)):
+                for col in range(len(wavefront[0])):
+                    if wavefront[row][col] < float('inf'):
+                        reachable.append((col, row))
+            return reachable
+        except Exception as e:
+            print("Error in reachableCells: ",e)
+            return []
 
     def astar(self, wrld, start, goal, withMonster=False, withBomb=False):
         """
