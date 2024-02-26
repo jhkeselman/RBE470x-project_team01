@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-
+import copy
 import random
 
 class QLearningCharacter(CharacterEntity):
@@ -23,8 +23,8 @@ class QLearningCharacter(CharacterEntity):
     weights = []
     
 
-    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]# Static for now
-
+    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0],[[0,0],0],[[1,1],0],[[-1,1],0],[[1,-1],0],[[-1,-1],0]]#, [[0,0],1]]# Static for now
+    tempAction = actions
     # Store values first time world is seen
     init_flag = False
     exit_wavefront = None # Wavefront from exit, ignores walls  
@@ -50,11 +50,12 @@ class QLearningCharacter(CharacterEntity):
         if not self.init_flag:
             self.world_size = wrld.width() * wrld.height()
             self.goal = self.findExit(wrld)
-            self.exit_wavefront = self.generateWavefront(wrld, self.goal,True)
+            
             self.flipwave=np.transpose(self.exit_wavefront)
             self.init_flag = True
             self.prevdist=self.world_size
                 
+        self.exit_wavefront = self.generateWavefront(wrld, self.goal,True)
 
         # Commands
         
@@ -80,13 +81,15 @@ class QLearningCharacter(CharacterEntity):
         #         dx += 1
         #     if 'b' == c:
         #         bomb = True
-
-        action = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        self.tempAction = copy.deepcopy(self.actions)
+        if not self.findBomb(wrld):
+            self.tempAction.append([[0,0],1])
+        action = self.argMax([(wrld, action) for action in self.tempAction], self.getQValue)
         # print("=================================================================")
         print("Picked Action: ",action)
         if action is None or random.random() < 0.3:
             print("Random action")
-            action = self.actions[random.randint(0,4)]
+            action = self.tempAction[random.randint(0,len(self.tempAction)-1)]
         else:
             action = action[1]
         dx, dy = action[0]
@@ -110,7 +113,7 @@ class QLearningCharacter(CharacterEntity):
         
         arg_max = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
         if arg_max is None:
-            arg_max = self.actions[random.randint(0,4)]
+            arg_max = self.tempAction[random.randint(0,len(self.tempAction)-1)]
         else:
             arg_max = arg_max[1]
 
@@ -174,15 +177,21 @@ class QLearningCharacter(CharacterEntity):
                         best = val
             return np.interp(best,[0,self.world_size],[0,1])
         if feat_name=="BOMB_DISTANCE":
-            dist = self.astar(wrld, pos, self.findBomb(wrld))
+            bomb = self.findBomb(wrld)
+            dist = self.astar(wrld, pos, bomb)
             if dist == []:
                 return 1.0
-            return np.interp(dist,[0,self.world_size],[0,1])
+            elif (abs(pos[0] - bomb[0]) <= wrld.expl_range and pos[1] == bomb[1]) or (abs(pos[1] - bomb[1]) <= wrld.expl_range and pos[0] == bomb[0]):
+                return .5+1/(len(dist)+1)
+            return 1/(len(dist)+1)
         if feat_name=="WALL_DISTANCE":
             return 0
         if feat_name=="EXPLOSION_DISTANCE":
+            bomb = self.findBomb(wrld)
+            explode = self.checkExplode(wrld, bomb, pos)
+            return explode
             if self.checkExplode(wrld, self.findBomb(wrld), pos) and self.checkExplode(wrld, self.findBomb(wrld), pos) >= 0:
-                return 1.0
+                return (wrld.bomb_time)-explode
             return 0
         if feat_name=="BOMB_PLACED":
             if self.findBomb(wrld):
@@ -468,11 +477,42 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             bool: True if the bomb explosion will reach the tile, False otherwise.
         """
-        if bomb is None:
-            return -1
-        if wrld.bomb_at(bomb[0], bomb[1]).timer:
-            if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
-                return wrld.bomb_at(bomb[0], bomb[1]).timer
+        expls = self.findExplosions(wrld)
+        if bomb:
+            timer=wrld.bomb_at(bomb[0], bomb[1]).timer
+            if timer<=1:
+                for i in range(-wrld.expl_range, wrld.expl_range+1):
+                    if bomb[0]+i>=0 and bomb[0]+i<wrld.width() and wrld.wall_at(bomb[0]+i, bomb[1])==0:
+                        expls.append((bomb[0]+i, bomb[1]))
+                    if bomb[1]+i>=0 and bomb[1]+i<wrld.height() and wrld.wall_at(bomb[0], bomb[1]+i)==0:
+                        expls.append((bomb[0], bomb[1]+i))
+            
+                    
+        
+        
+        if not expls:
+            return 0
+        min_dist = float('inf')
+        for expl in expls:
+            dist = self.openDist((expl[0], expl[1]), tile)
+            if dist < min_dist:
+                min_dist = dist
+        if min_dist <= float('inf'):
+            return 0
+        return 1/min_dist+1
+            
+        # if wrld.bomb_at(bomb[0], bomb[1]).timer:
+        #     if (abs(tile[0] - bomb[0]) <= wrld.expl_range and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= wrld.expl_range and tile[0] == bomb[0]):
+        #         return (wrld.bomb_time-wrld.bomb_at(bomb[0], bomb[1]).timer)/wrld.bomb_time
+        
+    
+    def findExplosions(self, wrld):
+        expls=[]
+        for row in range(wrld.height()):
+            for col in range(wrld.width()):
+                if wrld.explosion_at(col, row):
+                    expls.append((col, row))
+        return expls
 
     def result(self, wrld, action):
         """
