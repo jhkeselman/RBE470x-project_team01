@@ -21,6 +21,7 @@ class QLearningCharacter(CharacterEntity):
     features = ["MONSTER_DISTANCE", "EXIT_DISTANCE", "EXPLORABLE_DISTANCE_FROM_EXIT", "BOMB_DISTANCE", "WALL_DISTANCE", "EXPLOSION_DISTANCE","BOMB_PLACED"]
     num_features = len(features)
     weights = []
+    
 
     actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]] # Static for now
 
@@ -30,6 +31,7 @@ class QLearningCharacter(CharacterEntity):
     world_size = None # Number of cells in the world. Used to normalize distance values
     goal = None # Coordinates of the exit
     flipwave = None # Transpose of wavefront
+    prevdist=float('inf')
 
     # Store values that change every turn
     position = None # Current position
@@ -51,6 +53,8 @@ class QLearningCharacter(CharacterEntity):
             self.exit_wavefront = self.generateWavefront(wrld, self.goal,True)
             self.flipwave=np.transpose(self.exit_wavefront)
             self.init_flag = True
+            self.prevdist=self.world_size
+                
 
         # Commands
         
@@ -146,7 +150,7 @@ class QLearningCharacter(CharacterEntity):
         return features
 
     def featureValue(self,wrld,feat_name):
-        pos = self.findChar(wrld)
+        pos = self.findChar(wrld) # x,y
 
         # print("Feature value in world: ",wrld)
         if feat_name=="MONSTER_DISTANCE":
@@ -157,13 +161,14 @@ class QLearningCharacter(CharacterEntity):
                     closest = val
             return np.interp(closest,[0,self.world_size],[0,1])
         if feat_name=="EXIT_DISTANCE":
-            dist = self.flipwave[pos[0]][pos[1]]
+            dist = self.exit_wavefront[pos[0]][pos[1]]
+            
             # print("Exit distance: ",dist)
             return np.interp(dist,[0,self.world_size],[0,1])
         if feat_name=="EXPLORABLE_DISTANCE_FROM_EXIT":
             best = float('inf')
             for point in self.reachableCells(wrld, pos):  # TODO make sure uses new world
-                val = self.flipwave[point[0]][point[1]]
+                val = self.exit_wavefront[point[0]][point[1]]
                 if val < best:
                     best = val
             return np.interp(best,[0,self.world_size],[0,1])
@@ -175,7 +180,7 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="WALL_DISTANCE":
             return 0
         if feat_name=="EXPLOSION_DISTANCE":
-            if self.checkExplode(wrld, self.findBomb(wrld), pos):
+            if self.checkExplode(wrld, self.findBomb(wrld), pos)>=0:
                 return 1.0
             return 0
         if feat_name=="BOMB_PLACED":
@@ -196,7 +201,7 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             int: The number of reachable cells from the given point.
         """
-        wavefront = self.generateWavefront(wrld, (point[1],point[0]))
+        wavefront = self.generateWavefront(wrld, (point[0],point[1]))
         reachable = []
         for row in range(len(wavefront)):
             for col in range(len(wavefront[0])):
@@ -283,7 +288,7 @@ class QLearningCharacter(CharacterEntity):
             newCell = (cellx + dir[0], celly + dir[1])
             if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
                 if not withWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
-                    if not withBomb or not self.checkExplode(wrld, self.findBomb(wrld), newCell, turns):
+                    if not withBomb or 0 > self.checkExplode(wrld, self.findBomb(wrld), newCell, turns):
                         if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
                             neighbors.append(newCell)
         return neighbors
@@ -443,7 +448,7 @@ class QLearningCharacter(CharacterEntity):
                     return (col, row)
         return None
 
-    def checkExplode(self, wrld, bomb, tile,turns=1):
+    def checkExplode(self, wrld, bomb, tile):
 
         """
         Checks if a bomb explosion will reach a given tile.
@@ -457,10 +462,10 @@ class QLearningCharacter(CharacterEntity):
             bool: True if the bomb explosion will reach the tile, False otherwise.
         """
         if bomb is None:
-            return False
-        if wrld.bomb_at(bomb[0], bomb[1]).timer <= turns:
+            return -1
+        if wrld.bomb_at(bomb[0], bomb[1]).timer:
             if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
-                return True
+                return wrld.bomb_at(bomb[0], bomb[1]).timer
 
     def result(self, wrld, action):
         """
