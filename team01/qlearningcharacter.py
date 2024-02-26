@@ -180,11 +180,12 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="WALL_DISTANCE":
             return 0
         if feat_name=="EXPLOSION_DISTANCE":
-            if self.checkExplode(wrld, self.findBomb(wrld), pos)>=0:
-                return 1.0
+            explodeTime = self.checkExplode(wrld, self.findBomb(wrld), pos)
+            if explodeTime>=0:
+                return 1/explodeTime
             return 0
         if feat_name=="BOMB_PLACED":
-            if self.findBomb(wrld) is not None:
+            if self.findBomb(wrld):
                 return 1.0
             return 0
         return 0    
