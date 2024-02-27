@@ -43,14 +43,15 @@ class QLearningCharacter(CharacterEntity):
         super().__init__(name, color, x, y)
         try:
             self.weights = []
-            self.weights = np.load("weights.npy")
+            self.weights = np.loadtxt("weights.csv",
+                 delimiter=",", dtype=float)
             print("Inital Weighs: ",self.weights)
         except:
             print("Picking random weights")
             self.weights = []
             for i in range(self.num_features):
                 self.weights.append(random.random())
-            np.save("weights.npy",self.weights)
+            np.savetxt("weights.csv",self.weights)
 
 
     def do(self, wrld):
@@ -105,7 +106,7 @@ class QLearningCharacter(CharacterEntity):
             
             delta = self.getDelta(wrld, action)
             self.updateWeights(self.getFeatureValues(wrld), delta)
-            np.save("weights.npy",self.weights)
+            np.savetxt("weights.csv",self.weights)
             
             # Execute commands
             self.move(dx, dy)
@@ -129,6 +130,7 @@ class QLearningCharacter(CharacterEntity):
         alpha = 0.01
         for i in range(self.num_features):
             self.weights[i] += alpha * -delta * feature_values[i]
+        
     
     def getQValue(self, wrld, action):
         # print("Getting result of action: ",action)
