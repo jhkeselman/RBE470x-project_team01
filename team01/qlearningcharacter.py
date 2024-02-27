@@ -86,12 +86,11 @@ class QLearningCharacter(CharacterEntity):
         
 
 # --------------------------------------------------------------------------
-        if(path != []):
-                if (monsters == []):
-                    nextPoint = path.pop(1)
-                    dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
-                    self.move(dx, dy)
-                    return
+        if(path != []) and (monsters == []):
+            nextPoint = path.pop(1)
+            dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
+            self.move(dx, dy)
+            return
         else:
             result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
             
