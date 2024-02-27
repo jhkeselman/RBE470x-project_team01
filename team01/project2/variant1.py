@@ -22,4 +22,4 @@ g.add_character(QLearningCharacter("me", # name
 ))
 
 # Run!
-g.go()
+g.go(1)

@@ -1,5 +1,6 @@
 # This is necessary to find the main code
 import sys
+import time
 sys.path.insert(0, '../../bomberman')
 sys.path.insert(1, '..')
 
@@ -15,10 +16,10 @@ from monsters.stupid_monster import StupidMonster
 for _ in range(1000):
     # Create the game
     g = Game.fromfile('map.txt')
-    g.add_monster(StupidMonster("stupid", # name
-                                "S",      # avatar
-                                3, 9      # position
-    ))
+    # g.add_monster(StupidMonster("stupid", # name
+    #                             "S",      # avatar
+    #                             3, 9      # position
+    # ))
     # TODO Add your character
     g.add_character(QLearningCharacter("me", # name
                                 "C",  # avatar
@@ -30,7 +31,5 @@ for _ in range(1000):
 
 
     print("FINAL SCORE \n --------------------------------------------\n",g.world.scores["me"])
-    # if g.wrld.scores["me"] > 0:
-    #     break
-    # print("Weights: ", )
+    time.sleep(1)
 
