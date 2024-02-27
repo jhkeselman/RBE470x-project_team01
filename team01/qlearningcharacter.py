@@ -72,9 +72,12 @@ class QLearningCharacter(CharacterEntity):
 
         dx, dy = 0, 0
         bomb = False
+        
         path = self.astar(wrld, self.position, self.goal)
         monsters = self.findMonsters(wrld)
         print("Path: ", path)
+
+        
 
 # --------------------------------------------------------------------------
         if(path != []):
@@ -210,12 +213,12 @@ class QLearningCharacter(CharacterEntity):
         found = False
 
         pq = PriorityQueue()
-        pq.put((tuple(start), None, 0), 0)
+        pq.put((0,tuple(start), None), 0)
         explored = {}
         while not found and not pq.empty():
             element = pq.get()
-            exploring = element[0]
-            g = element[2]
+            g = element[0]
+            exploring = element[1]
             explored[exploring] = element
             if exploring == tuple(goal):
                 found = True
@@ -227,8 +230,8 @@ class QLearningCharacter(CharacterEntity):
                 if not neighbor in explored.keys():
                     print(neighbor)
                     f = g + 1 + self.openDist(neighbor, goal)
-                    pq.put((neighbor, exploring, g + 1), f)
-            print(pq.get_queue())
+                    pq.put((g+1, neighbor, exploring), f)
+                # print(pq.get_queue())
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
         return path
@@ -296,7 +299,7 @@ class QLearningCharacter(CharacterEntity):
             while cords != start:
                 element = explored[cords]
                 path = [list(cords)] + path
-                cords = element[1]
+                cords = element[2]
                 if cords == None:
                     # This should never happen given the way the algorithm is implemented
                     return []
