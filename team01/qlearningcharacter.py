@@ -20,7 +20,7 @@ class QLearningCharacter(CharacterEntity):
 
     # features = ["MONSTER_DISTANCE", "EXIT_DISTANCE", "EXPLORABLE_DISTANCE_FROM_EXIT", "BOMB_DISTANCE", "WALL_DISTANCE", "EXPLOSION_DISTANCE","BOMB_PLACED"]
     
-    features=["EXIT_DISTANCE", "IS_ALIVE", "NUMBER_OF_WALLS", "BOMB_PLACED"]
+    features=["EXIT_DISTANCE", "IS_ALIVE", "NUMBER_OF_WALLS", "BOMB_PLACED", "IN_BOMB_RANGE", "DISTANCE_FROM_BOMB"]
     num_features = len(features)
     weights = []
     
@@ -34,6 +34,7 @@ class QLearningCharacter(CharacterEntity):
     world_size = None # Number of cells in the world. Used to normalize distance values
     goal = None # Coordinates of the exit
     isBomb=False
+    maxTime=0
 
     # Store values that change every turn
     position = None # Current position
@@ -46,6 +47,8 @@ class QLearningCharacter(CharacterEntity):
             self.weights = np.loadtxt("weights.csv",
                  delimiter=",", dtype=float)
             print("Inital Weighs: ",self.weights)
+            if len(self.weights) != self.num_features:
+                raise Exception("Weights not the same length as features")
         except:
             print("Picking random weights")
             self.weights = []
@@ -63,6 +66,7 @@ class QLearningCharacter(CharacterEntity):
             self.maxWalls = self.findWalls(wrld)
             self.init_flag = True
             self.isBomb=False
+            self.maxTime=wrld.time
         
         
         #Bomb hysteresis to update the world after bomb goes off
@@ -73,7 +77,7 @@ class QLearningCharacter(CharacterEntity):
             self.exit_wavefront = self.generateWavefront(wrld, self.goal,True)
             self.to_goal_wave = self.generateWavefront(wrld,self.goal,False)
             
-        
+
         self.position = (self.x, self.y)
 
         dx, dy = 0, 0
@@ -115,21 +119,20 @@ class QLearningCharacter(CharacterEntity):
     def getDelta(self, wrld, action_taken):
         gamma = 0.9
         # print("Args: ",[(wrld, action) for action in self.actions])
-        
-        arg_max = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        new_wrld = self.result(wrld, action_taken)
+        arg_max = self.argMax([(new_wrld, action) for action in self.actions], self.getQValue)
         if arg_max is None:
             arg_max = self.actions[random.randint(0,4)]
         else:
             arg_max = arg_max[1]
 
-        r = wrld.scores["me"]
-        return r + gamma * self.getQValue(wrld, arg_max) - self.getQValue(wrld, action_taken)
+        r = self.getReward(new_wrld)#wrld.scores["me"]
+        return r + gamma * self.getQValue(new_wrld, arg_max) - self.getQValue(wrld, action_taken)
 
     def updateWeights(self, feature_values, delta):
         alpha = 0.01
         for i in range(self.num_features):
-            self.weights[i] += alpha * -delta * feature_values[i]
-        
+            self.weights[i] += alpha * -delta * feature_values[i]   
     
     def getQValue(self, wrld, action):
         # print("Getting result of action: ",action)
@@ -138,8 +141,8 @@ class QLearningCharacter(CharacterEntity):
             return 0
         # print("Next world: ",next)
         # print("From action: ",action)
-        print("self.weights: ",self.weights)
-        print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
+        # print("self.weights: ",self.weights)
+        # print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
         return np.dot(self.weights, self.getFeatureValues(next))
 
     def getFeatureValues(self, wrld):
@@ -176,7 +179,53 @@ class QLearningCharacter(CharacterEntity):
         if feat_name=="NUMBER_OF_WALLS":
             count = self.findWalls(wrld)
             return (self.maxWalls-count)/self.maxWalls
-        return 0    
+          
+        if feat_name=="IN_BOMB_RANGE":
+            bomb = self.findBomb(wrld)
+            if bomb:
+                timeToExplode = self.checkTimeToExplode(wrld, bomb, pos)
+                if timeToExplode>=1:
+                    return 1-1/timeToExplode
+            return 1.0
+        
+        if feat_name=="DISTANCE_FROM_BOMB":
+            bomb = self.findBomb(wrld)
+            if bomb:
+                dist=len(self.astar(wrld, pos, bomb))
+                return 1-1/(dist+.1)
+            return 1
+        
+        return 0  
+
+    def getReward(self, wrld):
+        """
+        Returns the reward of the given world state.
+
+        Args:
+            wrld (World): The game world.
+
+        Returns:
+            int: The reward of the world state.
+        """
+        charx, chary = self.findChar(wrld)
+        if charx == -1 and chary == -1:
+            return -10000
+        bombPoints = 0
+        bomb = self.findBomb(wrld)
+        
+        if bomb:
+            bombPoints = 10
+        selfDistToGoal = self.exit_wavefront[charx][chary]
+        
+        if wrld.explosion_at(charx, chary):
+            return -10000  
+        if bomb and self.checkTimeToExplode(wrld, bomb, (charx, chary)) == 1:
+            return -10000   
+        timepassed = wrld.time-self.maxTime   
+        return wrld.scores["me"] - selfDistToGoal + bombPoints
+        
+
+
 
     # Copilot code. Make sure to test
     def reachableCells(self, wrld, point):
@@ -266,13 +315,14 @@ class QLearningCharacter(CharacterEntity):
         if wrld.wall_at(cellx, celly) == 1:
             return neighbors
 
-        directions = [(0, 1), (1, 0), (0, -1), (-1, 0),(1,1),(-1,1),(1,-1),(-1,-1)]
+        directions = self.actions
         
-        for dir in directions:
+        for action in directions:
+            dir=action[0]
             newCell = (cellx + dir[0], celly + dir[1])
             if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
                 if not withWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
-                    if not withBomb or 0 > self.checkExplode(wrld, self.findBomb(wrld), newCell, turns):
+                    if not withBomb or 0 > self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell, turns):
                         if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
                             neighbors.append(newCell)
         return neighbors
@@ -297,7 +347,7 @@ class QLearningCharacter(CharacterEntity):
                     # This should never happen given the way the algorithm is implemented
                     return []
             path = [list(start)] + path
-            print("Path after reconstruction: ",path)
+            # print("Path after reconstruction: ",path)
             return path
     
     def generateWavefront(self, wrld, start ,throughWalls=False):
@@ -433,7 +483,7 @@ class QLearningCharacter(CharacterEntity):
                     return (col, row)
         return None
 
-    def checkExplode(self, wrld, bomb, tile):
+    def checkTimeToExplode(self, wrld, bomb, tile):
 
         """
         Checks if a bomb explosion will reach a given tile.
@@ -446,11 +496,13 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             bool: True if the bomb explosion will reach the tile, False otherwise.
         """
-        if bomb is None:
-            return -1
+        
         if wrld.bomb_at(bomb[0], bomb[1]).timer:
             if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
                 return wrld.bomb_at(bomb[0], bomb[1]).timer
+        if wrld.explosion_at(tile[0], tile[1]):
+            return 1
+        return -1
 
 
     def findWalls(self,wrld):
@@ -485,13 +537,13 @@ class QLearningCharacter(CharacterEntity):
             # print("Moved")
             nextWorld, _ = newWorld.next()
             # print("Score change: ",nextWorld.scores["me"] - newWorld.scores["me"])
-            print("Value change: ",self.getFeatureValues(newWorld),self.getFeatureValues(nextWorld))
+            # print("Value change: ",self.getFeatureValues(newWorld),self.getFeatureValues(nextWorld))
             # print("Posistion change: ",nextWorld.me(self).x - newWorld.me(self).x, nextWorld.me(self).y - newWorld.me(self).y)
             return nextWorld
         except Exception as e:
-            # print("Layer 1: ",e)
-            # print("Action: ",action)
-            # print("World: ====================================================",newWorld)
+            print("Layer 1: ",e)
+            print("Action: ",action)
+            print("World: ====================================================",newWorld)
             newWorld.printit()
             try:
                 nextWorld,_ = newWorld.next()
@@ -505,10 +557,10 @@ class QLearningCharacter(CharacterEntity):
     def argMax(args,util_function):
         max_val = float('-inf')
         arg_max = None # Was None
-        print(args)
+        # print(args)
         for arg in args:
             val = util_function(*arg)
-            print(val)
+            # print(val)
             if(val > max_val):
                 max_val = val
                 arg_max = arg

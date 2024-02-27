@@ -30,5 +30,7 @@ for _ in range(1000):
 
 
     print("FINAL SCORE \n --------------------------------------------\n",g.world.scores["me"])
+    if g.wrld.scores["me"] > 0:
+        break
     # print("Weights: ", )
 
