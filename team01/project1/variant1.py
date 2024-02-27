@@ -19,7 +19,7 @@ sys.path.insert(1, '../teamNN')
 g = Game.fromfile('map.txt')
 
 # TODO Add your character
-from aicharacter import AICharacter
+from qlearningcharacter import QLearningCharacter
 
 # Uncomment this if you want the test character
 # g.add_character(TestCharacter("me", # name
@@ -28,7 +28,7 @@ from aicharacter import AICharacter
 # ))
 
 # Uncomment this if you want the interactive character
-g.add_character(AICharacter("me", # name
+g.add_character(QLearningCharacter("me", # name
                                      "C",  # avatar
                                      0, 0  # position
 ))
