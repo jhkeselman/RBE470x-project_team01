@@ -108,31 +108,31 @@ class QLearningCharacter(CharacterEntity):
                 this_mon_dist=len(self.astar(wrld, monster, self.goal))
                 if this_mon_dist>0:
                     monst_dist_to_goal = min(monst_dist_to_goal,this_mon_dist)
-            if dist_to_goal<monst_dist_to_goal - 1:
+            if dist_to_goal<monst_dist_to_goal - 2:
                 nextPoint = path.pop(1)
                 dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                 self.move(dx, dy)
                 return
+        
+        result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        
+        # print("Picked Action: ",action)
+        if result is None or random.random() < 0.01:
+            # print("Random action")
+            action = self.actions[random.randint(0,4)]
         else:
-            result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
-            
-            # print("Picked Action: ",action)
-            if result is None or random.random() < 0.1:
-                # print("Random action")
-                action = self.actions[random.randint(0,4)]
-            else:
-                action = result[1]
-            dx, dy = action[0]
-            bomb = action[1]
-            
-            delta = self.getDelta(wrld, action)
-            self.updateWeights(self.getFeatureValues(wrld), delta)
-            np.savetxt("weights.csv",self.weights)
-            
-            # Execute commands
-            self.move(dx, dy)
-            if bomb:
-                self.place_bomb()
+            action = result[1]
+        dx, dy = action[0]
+        bomb = action[1]
+        
+        delta = self.getDelta(wrld, action)
+        self.updateWeights(self.getFeatureValues(wrld), delta)
+        np.savetxt("weights.csv",self.weights)
+        
+        # Execute commands
+        self.move(dx, dy)
+        if bomb:
+            self.place_bomb()
 
     def getDelta(self, wrld, action_taken):
         gamma = 0.9
@@ -244,7 +244,12 @@ class QLearningCharacter(CharacterEntity):
         bomb = self.findBomb(wrld)
         
         if bomb:
-            bombPoints = 500
+            bombPoints = 250
+            dist=len(self.astar(wrld, (charx,chary), bomb))
+            if dist>0:
+                bombPoints = 250+2*dist
+
+            
         selfDistToGoal = self.exit_wavefront[charx][chary]
         
         if wrld.explosion_at(charx, chary):
@@ -260,7 +265,7 @@ class QLearningCharacter(CharacterEntity):
                     if thisdist>0:
                         dist = min(dist,thisdist)            
             if dist != float('inf'):
-                monstPoints = dist
+                monstPoints = 3*dist
         timepassed = wrld.time-self.maxTime   
         return wrld.scores["me"] - selfDistToGoal + bombPoints + monstPoints
         
