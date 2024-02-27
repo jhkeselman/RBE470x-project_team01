@@ -25,7 +25,7 @@ class QLearningCharacter(CharacterEntity):
     weights = []
     
     
-    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]#, [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
+    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1], [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
 
     # Store values first time world is seen
     init_flag = False
@@ -127,7 +127,10 @@ class QLearningCharacter(CharacterEntity):
         
         delta = self.getDelta(wrld, action)
         self.updateWeights(self.getFeatureValues(wrld), delta)
-        np.savetxt("weights.csv",self.weights)
+        try:
+            np.savetxt("weights.csv",self.weights)
+        except:
+            pass
         
         # Execute commands
         self.move(dx, dy)
@@ -244,10 +247,10 @@ class QLearningCharacter(CharacterEntity):
         bomb = self.findBomb(wrld)
         
         if bomb:
-            bombPoints = 250
+            bombPoints = 500
             dist=len(self.astar(wrld, (charx,chary), bomb))
             if dist>0:
-                bombPoints = 250+2*dist
+                bombPoints = 500+3*dist
 
             
         selfDistToGoal = self.exit_wavefront[charx][chary]
@@ -256,7 +259,7 @@ class QLearningCharacter(CharacterEntity):
             return -10000  
         if bomb and self.checkTimeToExplode(wrld, bomb, (charx, chary)) == 1:
             return -10000   
-        monstPoints = self.world_size
+        monstPoints = 0#self.world_size
         monsters = self.findMonsters(wrld)
         if monsters:
             dist = float('inf')
