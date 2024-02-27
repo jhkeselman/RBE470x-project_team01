@@ -228,7 +228,7 @@ class QLearningCharacter(CharacterEntity):
             # print(neighbors)
             for neighbor in neighbors:
                 if not neighbor in explored.keys():
-                    print(neighbor)
+                    # print(neighbor)
                     f = g + 1 + self.openDist(neighbor, goal)
                     pq.put((g+1, neighbor, exploring), f)
                 # print(pq.get_queue())
