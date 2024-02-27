@@ -42,11 +42,16 @@ class QLearningCharacter(CharacterEntity):
     def __init__(self, name, color, x, y):
         super().__init__(name, color, x, y)
         try:
-            self.weights = np.load("/team01/project2/weights.npy")
+            self.weights = []
+            self.weights = np.load("weights.npy")
+            print("Inital Weighs: ",self.weights)
         except:
+            print("Picking random weights")
+            self.weights = []
             for i in range(self.num_features):
                 self.weights.append(random.random())
-        
+            np.save("weights.npy",self.weights)
+
 
     def do(self, wrld):
         if not self.init_flag:
@@ -86,26 +91,26 @@ class QLearningCharacter(CharacterEntity):
                     dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                     self.move(dx, dy)
                     return
-        # else:
-        #     result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
+        else:
+            result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
             
-        #     # print("Picked Action: ",action)
-        #     if result is None:
-        #         # print("Random action")
-        #         action = self.actions[random.randint(0,4)]
-        #     else:
-        #         action = result[1]
-        #     dx, dy = action[0]
-        #     bomb = action[1]
+            # print("Picked Action: ",action)
+            if result is None or random.random() < 0.1:
+                # print("Random action")
+                action = self.actions[random.randint(0,4)]
+            else:
+                action = result[1]
+            dx, dy = action[0]
+            bomb = action[1]
             
-        #     delta = self.getDelta(wrld, action)
-        #     self.updateWeights(self.getFeatureValues(wrld), delta)
-        #     # np.save("/team01/project2/weights.npy",self.weights)
+            delta = self.getDelta(wrld, action)
+            self.updateWeights(self.getFeatureValues(wrld), delta)
+            np.save("weights.npy",self.weights)
             
-        #     # Execute commands
-        #     self.move(dx, dy)
-        #     if bomb:
-        #         self.place_bomb()
+            # Execute commands
+            self.move(dx, dy)
+            if bomb:
+                self.place_bomb()
 
     def getDelta(self, wrld, action_taken):
         gamma = 0.9
@@ -121,7 +126,7 @@ class QLearningCharacter(CharacterEntity):
         return r + gamma * self.getQValue(wrld, arg_max) - self.getQValue(wrld, action_taken)
 
     def updateWeights(self, feature_values, delta):
-        alpha = 0.2
+        alpha = 0.01
         for i in range(self.num_features):
             self.weights[i] += alpha * -delta * feature_values[i]
     
@@ -132,6 +137,7 @@ class QLearningCharacter(CharacterEntity):
             return 0
         # print("Next world: ",next)
         # print("From action: ",action)
+        print("self.weights: ",self.weights)
         print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
         return np.dot(self.weights, self.getFeatureValues(next))
 
@@ -162,10 +168,10 @@ class QLearningCharacter(CharacterEntity):
             if self.findBomb(wrld):
                 return 1.0
             return 0
-        # if feat_name=="IS_ALIVE":
-        #     if wrld.me(self).is_alive():
-        #         return 1.0
-        #     return 0
+        if feat_name=="IS_ALIVE":
+            if self.findChar(wrld) == (-1,-1):
+                return 0.0
+            return 1.0
         if feat_name=="NUMBER_OF_WALLS":
             count = self.findWalls(wrld)
             return (self.maxWalls-count)/self.maxWalls
@@ -235,20 +241,6 @@ class QLearningCharacter(CharacterEntity):
         if found:
             path = self.reconstructPath(explored, tuple(start), tuple(goal))
         return path
-    
-    def astar2(self, wrld, start, goal):
-        """
-        A* algorithm for finding the shortest path from start to goal in a given world.
-
-        Args:
-            wrld (World): The game world.
-            start (tuple): The starting position.
-            goal (tuple): The goal position.
-        
-        Returns:
-            list: The shortest path from start to goal as a list of positions.
-        """
-        
 
     #Helper function to return the walkable neighbors 
     def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, withWalls=True, turns=1):
