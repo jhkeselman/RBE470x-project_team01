@@ -25,7 +25,7 @@ class QLearningCharacter(CharacterEntity):
     weights = []
     
     
-    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1], [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
+    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]#, [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
 
     # Store values first time world is seen
     init_flag = False
@@ -89,7 +89,7 @@ class QLearningCharacter(CharacterEntity):
         dx, dy = 0, 0
         bomb = False
         
-        path = self.astar(wrld, self.position, self.goal)
+        path = self.astar(wrld, self.position, self.goal,withBomb=False)
         monsters = self.findMonsters(wrld)
         print("Path: ", path)
 
@@ -250,7 +250,7 @@ class QLearningCharacter(CharacterEntity):
             bombPoints = 500
             dist=len(self.astar(wrld, (charx,chary), bomb))
             if dist>0:
-                bombPoints = 500+3*dist
+                bombPoints = 500+2*dist
 
             
         selfDistToGoal = self.exit_wavefront[charx][chary]
@@ -268,7 +268,7 @@ class QLearningCharacter(CharacterEntity):
                     if thisdist>0:
                         dist = min(dist,thisdist)            
             if dist != float('inf'):
-                monstPoints = 3*dist
+                monstPoints = 6*dist
         timepassed = wrld.time-self.maxTime   
         return wrld.scores["me"] - selfDistToGoal + bombPoints + monstPoints
         
@@ -301,7 +301,7 @@ class QLearningCharacter(CharacterEntity):
             print("Error in reachableCells: ",e)
             return []
 
-    def astar(self, wrld, start, goal,throughWalls=False):
+    def astar(self, wrld, start, goal,throughWalls=False,withBomb=False,withMonster=False,turns=1):
         """
         A* algorithm for finding the shortest path from start to goal in a given world.
 
@@ -328,7 +328,7 @@ class QLearningCharacter(CharacterEntity):
                 found = True
                 break
 
-            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls, turns=1)
+            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls, withBomb=withBomb,withMonster=withMonster)
             # print(neighbors)
             for neighbor in neighbors:
                 if not neighbor in explored.keys():
@@ -372,7 +372,7 @@ class QLearningCharacter(CharacterEntity):
             newCell = (cellx + dir[0], celly + dir[1])
             if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
                 if throughWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
-                    if not withBomb or 0 > self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell, turns):
+                    if not withBomb or 0 <= self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell) <= turns:
                         if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
                             neighbors.append(newCell)
         return neighbors
@@ -547,7 +547,8 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             bool: True if the bomb explosion will reach the tile, False otherwise.
         """
-        
+        if bomb is None:
+            return -1
         if wrld.bomb_at(bomb[0], bomb[1]).timer:
             if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
                 return wrld.bomb_at(bomb[0], bomb[1]).timer
