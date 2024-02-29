@@ -1,6 +1,7 @@
 # This is necessary to find the main code
 import sys
 import time
+import numpy as np
 sys.path.insert(0, '../../bomberman')
 sys.path.insert(1, '..')
 
@@ -13,6 +14,8 @@ from testcharacter import TestCharacter
 from qlearningcharacter import QLearningCharacter
 from monsters.selfpreserving_monster import SelfPreservingMonster
 from monsters.stupid_monster import StupidMonster
+
+record = []
 
 for _ in range(1000):
     # Create the game
@@ -37,8 +40,21 @@ for _ in range(1000):
 
 
     print("FINAL SCORE \n --------------------------------------------\n",g.world.scores["me"])
-    time.sleep(1)
+    
+    if g.world.scores["me"] < 0:
+        record.append(0)
+    else:
+        record.append(1)
+    percentage=[np.mean(record)*100]
+    print("Percentage of wins: ", percentage)
+    sav=np.concatenate((percentage,record))
+    print(sav)
+    np.savetxt("record.txt", sav, fmt='%d')
+    # if g.world.scores["me"] < 0:
+    #     exit()
     # if g.wrld.scores["me"] > 0:
     #     break
     # print("Weights: ", )
+
+    time.sleep(1)
 
