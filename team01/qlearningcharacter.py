@@ -20,7 +20,7 @@ class QLearningCharacter(CharacterEntity):
 
     # features = ["MONSTER_DISTANCE", "EXIT_DISTANCE", "EXPLORABLE_DISTANCE_FROM_EXIT", "BOMB_DISTANCE", "WALL_DISTANCE", "EXPLOSION_DISTANCE","BOMB_PLACED"]
     
-    features=["EXIT_DISTANCE", "IS_ALIVE", "NUMBER_OF_WALLS", "BOMB_PLACED", "IN_BOMB_RANGE", "DISTANCE_FROM_BOMB","DISTANCE_FROM_MONSTER"]
+    features=["EXIT_DISTANCE", "IS_ALIVE", "NUMBER_OF_WALLS", "BOMB_PLACED", "DISTANCE_FROM_EXPL", "DISTANCE_FROM_BOMB","DISTANCE_FROM_MONSTER"]
     num_features = len(features)
     weights = []
     
@@ -89,7 +89,7 @@ class QLearningCharacter(CharacterEntity):
         dx, dy = 0, 0
         bomb = False
         
-        path = self.astar(wrld, self.position, self.goal,withBomb=False,diag=True)
+        path = self.astar(wrld, self.position, self.goal,withBomb=False,withExplosion=True,diag=True)
         monsters = self.findMonsters(wrld)
         print("Path: ", path)
 
@@ -160,6 +160,15 @@ class QLearningCharacter(CharacterEntity):
         next = self.result(wrld, action)
         if next is None:
             return 0
+        
+        if self.findChar(next) == (-1,-1):
+            return -10000
+        if next.explosion_at(self.x+action[0][0],self.y+action[0][1]):
+            "action would result in death"
+            return -10000
+        if self.findBomb(next) and self.checkTimeToExplode(next, self.findBomb(next), (self.x+action[0][0],self.y+action[0][1])) == 1:
+            "action would result in death"
+            return -10000
         # print("Next world: ",next)
         # print("From action: ",action)
         # print("self.weights: ",self.weights)
@@ -201,16 +210,7 @@ class QLearningCharacter(CharacterEntity):
             count = self.findWalls(wrld)
             return (self.maxWalls-count)/self.maxWalls
           
-        if feat_name=="IN_BOMB_RANGE":
-            bomb = self.findBomb(wrld)
-            if bomb:
-                timeToExplode = self.checkTimeToExplode(wrld, bomb, pos)
-                if timeToExplode>=1:
-                    return 1-1/timeToExplode
-            return 1.0
-        
-        if feat_name=="DISTANCE_FROM_BOMB":
-            bomb = self.findBomb(wrld)
+        if feat_name=="DISTANCE_FROM_EXPL":
             explosion = self.findExplosion(wrld)
             if explosion:
                 dist = float('inf')
@@ -220,6 +220,11 @@ class QLearningCharacter(CharacterEntity):
                         dist = min(dist,thisdist)
                 if dist != float('inf'):
                     return 1-1/(dist+.1)
+            return 1.0
+        
+        if feat_name=="DISTANCE_FROM_BOMB":
+            bomb = self.findBomb(wrld)
+            
             if bomb:
                 dist=len(self.astar(wrld, pos, bomb))
                 return 1-1/(dist+.1)
@@ -234,7 +239,8 @@ class QLearningCharacter(CharacterEntity):
                     thisdist = len(self.astar(wrld, pos, monster,throughWalls=False))
                     if thisdist>0:
                         dist = min(dist,thisdist)
-                return 1-1/(dist)
+                # print(dist.__class__)
+                return 1-1/np.power(dist,2)
             return 0
         
 
@@ -311,7 +317,7 @@ class QLearningCharacter(CharacterEntity):
             print("Error in reachableCells: ",e)
             return []
 
-    def astar(self, wrld, start, goal,throughWalls=False,withBomb=False,withMonster=False,diag=False):
+    def astar(self, wrld, start, goal,throughWalls=False,withBomb=False,withExplosion=False,withMonster=False,diag=False):
         """
         A* algorithm for finding the shortest path from start to goal in a given world.
 
@@ -338,7 +344,7 @@ class QLearningCharacter(CharacterEntity):
                 found = True
                 break
 
-            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls, withBomb=withBomb,withMonster=withMonster,diag=diag)
+            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls, withBomb=withBomb,withMonster=withMonster,withExplosion=withExplosion,diag=diag)
             # print(neighbors)
             for neighbor in neighbors:
                 if not neighbor in explored.keys():
@@ -353,7 +359,7 @@ class QLearningCharacter(CharacterEntity):
         return path
 
     #Helper function to return the walkable neighbors 
-    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, turns=1,diag=False):
+    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, withExplosion=False,turns=1,diag=False):
         """
         Returns a list of neighboring cells that are accessible from the given cell.
 
@@ -382,10 +388,11 @@ class QLearningCharacter(CharacterEntity):
             dir=action[0]
             newCell = (cellx + dir[0], celly + dir[1])
             if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
-                if throughWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
-                    if not withBomb or 0 <= self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell) <= turns:
-                        if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
-                            neighbors.append(newCell)
+                if not wrld.explosion_at(newCell[0], newCell[1]) or not withExplosion:
+                    if throughWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
+                        if not withBomb or 0 <= self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell) <= turns:
+                            if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
+                                neighbors.append(newCell)
         return neighbors
                             
     # Helper function to reconstruct the path from the explored dictionary
