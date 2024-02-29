@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-
+import copy
 import random
 
 class QLearningCharacter(CharacterEntity):
@@ -119,7 +119,7 @@ class QLearningCharacter(CharacterEntity):
         # print("Picked Action: ",action)
         if result is None or random.random() < 0.1:
             # print("Random action")
-            action = self.actions[random.randint(0,4)]
+            action = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             action = result[1]
         dx, dy = action[0]
@@ -143,7 +143,7 @@ class QLearningCharacter(CharacterEntity):
         new_wrld = self.result(wrld, action_taken)
         arg_max = self.argMax([(new_wrld, action) for action in self.actions], self.getQValue)
         if arg_max is None:
-            arg_max = self.actions[random.randint(0,4)]
+            arg_max = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             arg_max = arg_max[1]
 
