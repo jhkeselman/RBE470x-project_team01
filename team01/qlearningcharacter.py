@@ -49,6 +49,8 @@ class QLearningCharacter(CharacterEntity):
             print("Inital Weighs: ",self.weights)
             if len(self.weights) != self.num_features:
                 raise Exception("Weights not the same length as features")
+            if np.isnan(self.weights).any():
+                raise Exception("Weights contain nan")
         except:
             print("Picking random weights")
             self.weights = []
@@ -119,7 +121,7 @@ class QLearningCharacter(CharacterEntity):
         # print("Picked Action: ",action)
         if result is None or random.random() < 0.01:
             # print("Random action")
-            action = self.actions[random.randint(0,4)]
+            action = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             action = result[1]
         dx, dy = action[0]
@@ -127,7 +129,10 @@ class QLearningCharacter(CharacterEntity):
         
         delta = self.getDelta(wrld, action)
         self.updateWeights(self.getFeatureValues(wrld), delta)
-        np.savetxt("weights.csv",self.weights)
+        try:
+            np.savetxt("weights.csv",self.weights)
+        except:
+            pass
         
         # Execute commands
         self.move(dx, dy)
@@ -140,7 +145,7 @@ class QLearningCharacter(CharacterEntity):
         new_wrld = self.result(wrld, action_taken)
         arg_max = self.argMax([(new_wrld, action) for action in self.actions], self.getQValue)
         if arg_max is None:
-            arg_max = self.actions[random.randint(0,4)]
+            arg_max = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             arg_max = arg_max[1]
 
