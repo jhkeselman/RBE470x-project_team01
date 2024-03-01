@@ -153,7 +153,7 @@ class QLearningCharacter(CharacterEntity):
         return r + gamma * self.getQValue(new_wrld, arg_max) - self.getQValue(wrld, action_taken)
 
     def updateWeights(self, feature_values, delta):
-        alpha = 0.01
+        alpha = 0.05
         for i in range(self.num_features):
             self.weights[i] += alpha * -delta * feature_values[i]   
     

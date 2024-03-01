@@ -6,13 +6,14 @@ sys.path.insert(1, '..')
 
 # Import necessary stuff
 from game import Game
-
+import numpy as np
 # TODO This is your code!
 sys.path.insert(1, '../teamNN')
 from testcharacter import TestCharacter
 from qlearningcharacter import QLearningCharacter
 from monsters.selfpreserving_monster import SelfPreservingMonster
-
+scores = []
+record = []
 for _ in range(1000):
     # Create the game
     g = Game.fromfile('map.txt')
@@ -32,7 +33,16 @@ for _ in range(1000):
 
 
     print("FINAL SCORE \n --------------------------------------------\n",g.world.scores["me"])
-    time.sleep(1)
+    scores.append(g.world.scores["me"])
+    if g.world.scores["me"] < 0:
+        record.append(0)
+    else:
+        record.append(1)
+    percentage=[np.mean(record)*100,np.mean(scores)]
+    print("Percentage of wins: ", percentage)
+    sav=np.concatenate((percentage,record))
+    print(sav)
+    np.savetxt("record4.txt", sav, fmt='%d')
     # if g.wrld.scores["me"] > 0:
     #     break
     # print("Weights: ", )
