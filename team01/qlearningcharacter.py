@@ -91,7 +91,7 @@ class QLearningCharacter(CharacterEntity):
         dx, dy = 0, 0
         bomb = False
         
-        path = self.astar(wrld, self.position, self.goal)
+        path = self.astar(wrld, self.position, self.goal, withExplosions=True)
         monsters = self.findMonsters(wrld)
         print("Path: ", path)
 
@@ -266,7 +266,7 @@ class QLearningCharacter(CharacterEntity):
         if monsters:
             dist = float('inf')
             for monster in monsters:
-                    thisdist = len(self.astar(wrld, (charx,chary), monster,throughWalls=False))
+                    thisdist = len(self.astar(wrld, (charx,chary), monster,throughWalls=False,withExplosions=True))
                     if thisdist>0:
                         dist = min(dist,thisdist)            
             if dist != float('inf'):
@@ -303,7 +303,7 @@ class QLearningCharacter(CharacterEntity):
             print("Error in reachableCells: ",e)
             return []
 
-    def astar(self, wrld, start, goal,throughWalls=False):
+    def astar(self, wrld, start, goal,throughWalls=False,withExplosions=False):
         """
         A* algorithm for finding the shortest path from start to goal in a given world.
 
@@ -330,7 +330,7 @@ class QLearningCharacter(CharacterEntity):
                 found = True
                 break
 
-            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls, turns=1)
+            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls,withExplosions=withExplosions, turns=1)
             # print(neighbors)
             for neighbor in neighbors:
                 if not neighbor in explored.keys():
@@ -345,7 +345,7 @@ class QLearningCharacter(CharacterEntity):
         return path
 
     #Helper function to return the walkable neighbors 
-    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, turns=1):
+    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, withExplosions=False,turns=1):
         """
         Returns a list of neighboring cells that are accessible from the given cell.
 
@@ -373,10 +373,11 @@ class QLearningCharacter(CharacterEntity):
             dir=action[0]
             newCell = (cellx + dir[0], celly + dir[1])
             if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
-                if throughWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
-                    if not withBomb or 0 > self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell, turns):
-                        if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
-                            neighbors.append(newCell)
+                if not withExplosions or not wrld.explosion_at(newCell[0], newCell[1]):
+                    if throughWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
+                        if not withBomb or 0 > self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell, turns):
+                            if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
+                                neighbors.append(newCell)
         return neighbors
                             
     # Helper function to reconstruct the path from the explored dictionary
