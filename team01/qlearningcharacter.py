@@ -26,6 +26,7 @@ class QLearningCharacter(CharacterEntity):
     
     diagactions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1], [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]
     actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]#,[[0,1],1], [[0,-1],1], [[-1,0],1], [[1,0],1]]#, [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
+    actions = diagactions # enable diagonal movement
 
     # Store values first time world is seen
     init_flag = False
@@ -49,6 +50,7 @@ class QLearningCharacter(CharacterEntity):
             print("Inital Weighs: ",self.weights)
             if len(self.weights) != self.num_features:
                 raise Exception("Weights not the same length as features")
+            # self.weights = self.weights / max(self.weights) # Normalize weights on load
         except:
             print("Picking random weights")
             self.weights = []
@@ -113,19 +115,22 @@ class QLearningCharacter(CharacterEntity):
                 dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                 self.move(dx, dy)
                 return
-        
+        # print("Choosing Action:")
         result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
         
         # print("Picked Action: ",action)
-        if result is None or random.random() < 0.1:
+        if result is None: # No randomness
+        # if result is None or random.random() < 0.1:
             # print("Random action")
             action = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             action = result[1]
+            # print("Picked Action: ",action)
         dx, dy = action[0]
         bomb = action[1]
         
         delta = self.getDelta(wrld, action)
+        # print("updating weights: ")
         self.updateWeights(self.getFeatureValues(wrld), delta)
         try:
             np.savetxt("weights.csv",self.weights)
@@ -143,6 +148,7 @@ class QLearningCharacter(CharacterEntity):
         new_wrld = self.result(wrld, action_taken)
         arg_max = self.argMax([(new_wrld, action) for action in self.actions], self.getQValue)
         if arg_max is None:
+            # print("Using random value for delta")
             arg_max = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             arg_max = arg_max[1]
@@ -157,13 +163,21 @@ class QLearningCharacter(CharacterEntity):
     
     def getQValue(self, wrld, action):
         # print("Getting result of action: ",action)
+        # print("Getting Q Value ", end = " ")
         next = self.result(wrld, action)
+        # print("From action: ",action, end = " ")
         if next is None:
-            return 0
+            # print("Returning -10000 for no world")
+            return -10000
+        # print("Next next: ", next.next())
+        if (self.findChar(next.next()[0]) == (-1,-1)):
+            # print("Returning -10000 for dead stat: character: ",self.findChar(next.next()[0]) )
+            # return float('-inf')
+            return -10000
         # print("Next world: ",next)
-        # print("From action: ",action)
+        
         # print("self.weights: ",self.weights)
-        # print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
+        # print("q value: ",np.dot(self.weights, self.getFeatureValues(next)),end="\n")
         return np.dot(self.weights, self.getFeatureValues(next))
 
     def getFeatureValues(self, wrld):
@@ -237,7 +251,6 @@ class QLearningCharacter(CharacterEntity):
                 return 1-1/(dist)
             return 0
         
-
         return 0  
 
     def getReward(self, wrld):
@@ -621,10 +634,11 @@ class QLearningCharacter(CharacterEntity):
             # print("Posistion change: ",nextWorld.me(self).x - newWorld.me(self).x, nextWorld.me(self).y - newWorld.me(self).y)
             return nextWorld
         except Exception as e:
+            return None
             print("Layer 1: ",e)
             print("Action: ",action)
             print("World: ====================================================",newWorld)
-            newWorld.printit()
+            # newWorld.printit()
             try:
                 nextWorld,_ = newWorld.next()
                 return nextWorld
