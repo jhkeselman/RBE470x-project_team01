@@ -15,27 +15,9 @@ We modified our `__init__` method to include the initialization of our q-learnin
 
 ### 2.2 State Machine
 Like project 1, our state machine was implemented in the `do` function. The state machine is generally structured as follows:
-```
-if not initialized:
-    Initialize character variables including wavefronts to goal with and without walls
-Get A* path to goal
-If there is a path to goal and no monsters:
-    A* to goal
-else if there is a path to goal:
-    Get shortest distance from the goal to a monster
-    If that distance is two greater than distance from character to goal:
-        A* to goal
 
-get optimal action using q-learning
-if no optimal action or random chance (1% of the time):
+![State machine diagram](470xDiagram.drawio.png)
 
-    Choose random action
-else:
-    Choose optimal action from results of q-learning
-Take chosen action
-Update weights
-Save updated weights to .csv file
-```
 This structure allows the character to navigate to the goal using A* if there is a clear path, and to use q-learning to navigate if there is not. It also uses a static epsilon value to allow for a mix of exploration and exploitation. This method, of balancing between direct pathfinding and q-learning, ensures that the character is extremely efficient on the easiest variants, as well as placing more weighting emphasis on actions taken further from the goal, where monsters and bombs are generally more threatening. 
 
 ### 2.3 A* Implementation and Wavefront
@@ -103,13 +85,20 @@ We trained our character using a series of environments based on five provided v
 
 ## 3. Experimental Evaluation
 
+During and after training the Q(a,s) function, notable emergent behaviors were observed. These include:
+- Always having a bomb placed- the system learned that this maximizes the rewards given for exploding walls and monsters.
+- Breaking through walls tends to happen on the edges of the field- this is inferred to be a result of avoiding the monster, as the edge of the field is often the farthest distance from the monster.
+- Field "cycling"- due to bomb placement and then subsequent avoidance, the character often takes a cyclical path through the field as it places bombs and runs from them. This is comounded by the typical wall openings at the edges of the field and perpetual bomb placement.
+- Monster migration- there is less incentive to, and a lack of a mechanism for, purposefully exploding a monster. This results in many cases where the character evades the monster until it makes its way to the top of the map, at which point the character can exit.
+
+
 ### 3.1 Variant 1:
-For training on a copy of variant 1, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
+For training on a copy of variant 1, our character survived 100 trials out of 100 total trials, for a survival rate of 100%. It ended with an average score of 4997.
 ### 3.2 Variant 2:
-For training on a copy of variant 2, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
+For training on a copy of variant 2, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
 ### 3.3 Variant 3:
-For training on a copy of variant 3, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
+For training on a copy of variant 3, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
 ### 3.4 Variant 4:
-For training on a copy of variant 4, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
+For training on a copy of variant 4, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
 ### 3.5 Variant 5:
-For training on a copy of variant 5, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
+For training on a copy of variant 5, our character survived 61 trials out of 100 total trials, for a survival rate of 61%. It ended with an average score of 1229.
