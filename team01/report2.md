@@ -95,7 +95,7 @@ During and after training the Q(a,s) function, notable emergent behaviors were o
 ### 3.1 Variant 1:
 For training on a copy of variant 1, our character survived 100 trials out of 100 total trials, for a survival rate of 100%. It ended with an average score of 4997.
 ### 3.2 Variant 2:
-For training on a copy of variant 2, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
+For training on a copy of variant 2, our character survived 91 trials out of 100 total trials, for a survival rate of 91%. It ended with an average score of 4087.
 ### 3.3 Variant 3:
 For training on a copy of variant 3, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
 ### 3.4 Variant 4:
