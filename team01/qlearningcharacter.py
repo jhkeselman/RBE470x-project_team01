@@ -95,7 +95,7 @@ class QLearningCharacter(CharacterEntity):
         bomb = False
         
 
-        path = self.astar(wrld, self.position, self.goal, withExplosions=True)
+        path = self.astar(wrld, self.position, self.goal, withExplosions=True,diag=True)
 
         monsters = self.findMonsters(wrld)
         print("Path: ", path)
@@ -330,7 +330,7 @@ class QLearningCharacter(CharacterEntity):
             return []
 
 
-    def astar(self, wrld, start, goal,throughWalls=False,withExplosions=False):
+    def astar(self, wrld, start, goal,throughWalls=False,withExplosions=False,diag=False):
 
         """
         A* algorithm for finding the shortest path from start to goal in a given world.
@@ -359,7 +359,7 @@ class QLearningCharacter(CharacterEntity):
                 break
 
 
-            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls,withExplosions=withExplosions, turns=1)
+            neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls,withExplosions=withExplosions,diag=diag, turns=1)
 
             # print(neighbors)
             for neighbor in neighbors:
@@ -376,7 +376,7 @@ class QLearningCharacter(CharacterEntity):
 
     #Helper function to return the walkable neighbors 
 
-    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, withExplosions=False,turns=1):
+    def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, withExplosions=False,diag=False,turns=1):
  
         """
         Returns a list of neighboring cells that are accessible from the given cell.
