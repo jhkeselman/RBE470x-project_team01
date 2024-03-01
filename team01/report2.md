@@ -27,7 +27,8 @@ else if there is a path to goal:
         A* to goal
 
 get optimal action using q-learning
-if no optimal action or random chance (10% of the time):
+if no optimal action or random chance (1% of the time):
+
     Choose random action
 else:
     Choose optimal action from results of q-learning
