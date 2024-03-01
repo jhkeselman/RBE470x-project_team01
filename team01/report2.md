@@ -97,7 +97,7 @@ For training on a copy of variant 1, our character survived 100 trials out of 10
 ### 3.2 Variant 2:
 For training on a copy of variant 2, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
 ### 3.3 Variant 3:
-For training on a copy of variant 3, our character survived [a] trials out of [b] total trials, for a survival rate of [c]. It ended with an average score of [d].
+For training on a copy of variant 3, our character survived 69 trials out of 2062 total trials, for a survival rate of 69%. It ended with an average score of [d].
 ### 3.4 Variant 4:
 For training on a copy of variant 4, our character survived 67 trials out of 100 total trials, for a survival rate of 67%. It ended with an average score of 1777.
 ### 3.5 Variant 5:
