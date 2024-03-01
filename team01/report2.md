@@ -103,6 +103,13 @@ We trained our character using a series of environments based on five provided v
 
 ## 3. Experimental Evaluation
 
+During and after training the Q(a,s) function, notable emergent behaviors were observed. These include:
+- Always having a bomb placed- the system learned that this maximizes the rewards given for exploding walls and monsters.
+- Breaking through walls tends to happen on the edges of the field- this is inferred to be a result of avoiding the monster, as the edge of the field is often the farthest distance from the monster.
+- Field "cycling"- due to bomb placement and then subsequent avoidance, the character often takes a cyclical path through the field as it places bombs and runs from them. This is comounded by the typical wall openings at the edges of the field and perpetual bomb placement.
+- Monster migration- there is less incentive to, and a lack of a mechanism for, purposefully exploding a monster. This results in many cases where the character evades the monster until it makes its way to the top of the map, at which point the character can exit.
+
+
 ### 3.1 Variant 1:
 For training on a copy of variant 1, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
 ### 3.2 Variant 2:
