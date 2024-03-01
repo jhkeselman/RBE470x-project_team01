@@ -16,7 +16,9 @@ from monsters.selfpreserving_monster import SelfPreservingMonster
 from monsters.stupid_monster import StupidMonster
 
 record = []
+
 scores=[]
+
 
 for _ in range(1000):
     # Create the game
@@ -41,12 +43,16 @@ for _ in range(1000):
 
 
     print("FINAL SCORE \n --------------------------------------------\n",g.world.scores["me"])
+
     scores.append(g.world.scores["me"])
+
     if g.world.scores["me"] < 0:
         record.append(0)
     else:
         record.append(1)
+
     percentage=[np.mean(record)*100,np.mean(scores)]
+
     print("Percentage of wins: ", percentage)
     sav=np.concatenate((percentage,record))
     print(sav)
@@ -57,5 +63,5 @@ for _ in range(1000):
     #     break
     # print("Weights: ", )
 
-    # time.sleep(1)
+
 

@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-
+import copy
 import random
 
 class QLearningCharacter(CharacterEntity):
@@ -24,8 +24,9 @@ class QLearningCharacter(CharacterEntity):
     num_features = len(features)
     weights = []
     
-    
-    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]#, [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
+    diagactions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1], [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]
+    actions = [[[0,1],0], [[0,-1],0], [[-1,0],0], [[1,0],0], [[0,0],1]]#,[[0,1],1], [[0,-1],1], [[-1,0],1], [[1,0],1]]#, [[1,1],0], [[-1,1],0], [[1,-1],0], [[-1,-1],0]]# Static for now
+    actions = diagactions # enable diagonal movement
 
     # Store values first time world is seen
     init_flag = False
@@ -49,8 +50,10 @@ class QLearningCharacter(CharacterEntity):
             print("Inital Weighs: ",self.weights)
             if len(self.weights) != self.num_features:
                 raise Exception("Weights not the same length as features")
+
             if np.isnan(self.weights).any():
                 raise Exception("Weights contain nan")
+
         except:
             print("Picking random weights")
             self.weights = []
@@ -91,7 +94,9 @@ class QLearningCharacter(CharacterEntity):
         dx, dy = 0, 0
         bomb = False
         
+
         path = self.astar(wrld, self.position, self.goal, withExplosions=True)
+
         monsters = self.findMonsters(wrld)
         print("Path: ", path)
 
@@ -115,19 +120,22 @@ class QLearningCharacter(CharacterEntity):
                 dx,dy = nextPoint[0] - self.x, nextPoint[1] - self.y
                 self.move(dx, dy)
                 return
-        
+        # print("Choosing Action:")
         result = self.argMax([(wrld, action) for action in self.actions], self.getQValue)
         
         # print("Picked Action: ",action)
-        if result is None or random.random() < 0.01:
+        if result is None: # No randomness
+        # if result is None or random.random() < 0.1:
             # print("Random action")
             action = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             action = result[1]
+            # print("Picked Action: ",action)
         dx, dy = action[0]
         bomb = action[1]
         
         delta = self.getDelta(wrld, action)
+        # print("updating weights: ")
         self.updateWeights(self.getFeatureValues(wrld), delta)
         try:
             np.savetxt("weights.csv",self.weights)
@@ -145,6 +153,7 @@ class QLearningCharacter(CharacterEntity):
         new_wrld = self.result(wrld, action_taken)
         arg_max = self.argMax([(new_wrld, action) for action in self.actions], self.getQValue)
         if arg_max is None:
+
             arg_max = self.actions[random.randint(0,len(self.actions)-1)]
         else:
             arg_max = arg_max[1]
@@ -159,13 +168,21 @@ class QLearningCharacter(CharacterEntity):
     
     def getQValue(self, wrld, action):
         # print("Getting result of action: ",action)
+        # print("Getting Q Value ", end = " ")
         next = self.result(wrld, action)
+        # print("From action: ",action, end = " ")
         if next is None:
-            return 0
+            # print("Returning -10000 for no world")
+            return -10000
+        # print("Next next: ", next.next())
+        if (self.findChar(next.next()[0]) == (-1,-1)):
+            # print("Returning -10000 for dead stat: character: ",self.findChar(next.next()[0]) )
+            # return float('-inf')
+            return -10000
         # print("Next world: ",next)
-        # print("From action: ",action)
+        
         # print("self.weights: ",self.weights)
-        # print("Next value: ",np.dot(self.weights, self.getFeatureValues(next)))
+        # print("q value: ",np.dot(self.weights, self.getFeatureValues(next)),end="\n")
         return np.dot(self.weights, self.getFeatureValues(next))
 
     def getFeatureValues(self, wrld):
@@ -213,9 +230,19 @@ class QLearningCharacter(CharacterEntity):
         
         if feat_name=="DISTANCE_FROM_BOMB":
             bomb = self.findBomb(wrld)
+            explosion = self.findExplosion(wrld)
+            if explosion:
+                dist = float('inf')
+                for expl in explosion:
+                    thisdist = len(self.astar(wrld, pos, (expl[0],expl[1])))
+                    if thisdist>0:
+                        dist = min(dist,thisdist)
+                if dist != float('inf'):
+                    return 1-1/(dist+.1)
             if bomb:
                 dist=len(self.astar(wrld, pos, bomb))
                 return 1-1/(dist+.1)
+            
             return 1
         
         if feat_name=="DISTANCE_FROM_MONSTER":
@@ -226,10 +253,9 @@ class QLearningCharacter(CharacterEntity):
                     thisdist = len(self.astar(wrld, pos, monster,throughWalls=False))
                     if thisdist>0:
                         dist = min(dist,thisdist)
-                return 1-1/(dist+.1)
+                return 1-1/(dist)
             return 0
         
-
         return 0  
 
     def getReward(self, wrld):
@@ -249,10 +275,10 @@ class QLearningCharacter(CharacterEntity):
         bomb = self.findBomb(wrld)
         
         if bomb:
-            bombPoints = 250
+            bombPoints = 500
             dist=len(self.astar(wrld, (charx,chary), bomb))
             if dist>0:
-                bombPoints = 250+2*dist
+                bombPoints = 500+2*dist
 
             
         selfDistToGoal = self.exit_wavefront[charx][chary]
@@ -261,7 +287,7 @@ class QLearningCharacter(CharacterEntity):
             return -10000  
         if bomb and self.checkTimeToExplode(wrld, bomb, (charx, chary)) == 1:
             return -10000   
-        monstPoints = self.world_size
+        monstPoints = 0#self.world_size
         monsters = self.findMonsters(wrld)
         if monsters:
             dist = float('inf')
@@ -270,7 +296,7 @@ class QLearningCharacter(CharacterEntity):
                     if thisdist>0:
                         dist = min(dist,thisdist)            
             if dist != float('inf'):
-                monstPoints = 3*dist
+                monstPoints = 6*dist
         timepassed = wrld.time-self.maxTime   
         return wrld.scores["me"] - selfDistToGoal + bombPoints + monstPoints
         
@@ -303,7 +329,9 @@ class QLearningCharacter(CharacterEntity):
             print("Error in reachableCells: ",e)
             return []
 
+
     def astar(self, wrld, start, goal,throughWalls=False,withExplosions=False):
+
         """
         A* algorithm for finding the shortest path from start to goal in a given world.
 
@@ -330,7 +358,9 @@ class QLearningCharacter(CharacterEntity):
                 found = True
                 break
 
+
             neighbors = self.getNeighbors(wrld, exploring, throughWalls=throughWalls,withExplosions=withExplosions, turns=1)
+
             # print(neighbors)
             for neighbor in neighbors:
                 if not neighbor in explored.keys():
@@ -345,7 +375,9 @@ class QLearningCharacter(CharacterEntity):
         return path
 
     #Helper function to return the walkable neighbors 
+
     def getNeighbors(self, wrld, cell, withBomb=False, withMonster=False, throughWalls=False, withExplosions=False,turns=1):
+ 
         """
         Returns a list of neighboring cells that are accessible from the given cell.
 
@@ -368,16 +400,19 @@ class QLearningCharacter(CharacterEntity):
             return neighbors
 
         directions = self.actions
-        
+        if diag:
+            directions = self.diagactions
         for action in directions:
             dir=action[0]
             newCell = (cellx + dir[0], celly + dir[1])
             if 0 <= newCell[0] < cols and 0 <= newCell[1] < rows:
+
                 if not withExplosions or not wrld.explosion_at(newCell[0], newCell[1]):
                     if throughWalls or wrld.wall_at(newCell[0], newCell[1]) == 0:
                         if not withBomb or 0 > self.checkTimeToExplode(wrld, self.findBomb(wrld), newCell, turns):
                             if not withMonster or not wrld.monsters_at(newCell[0], newCell[1]):
                                 neighbors.append(newCell)
+
         return neighbors
                             
     # Helper function to reconstruct the path from the explored dictionary
@@ -521,6 +556,23 @@ class QLearningCharacter(CharacterEntity):
                         monsters.append((col, row))
             return monsters
     
+    def findExplosion(self, wrld):
+        """
+        Finds and returns the positions of all explosions in the given world.
+
+        Parameters:
+        - wrld (World): The game world.
+
+        Returns:
+        - list: A list of tuples representing the positions of the explosions.
+        """
+        explosions = []
+        for row in range(wrld.height()):
+            for col in range(wrld.width()):
+                if wrld.explosion_at(col, row):
+                    explosions.append((col, row))
+        return explosions
+
     def findBomb(self, wrld):
         """
         Finds the coordinates of the first bomb in the given world.
@@ -550,7 +602,8 @@ class QLearningCharacter(CharacterEntity):
         Returns:
             bool: True if the bomb explosion will reach the tile, False otherwise.
         """
-        
+        if bomb is None:
+            return -1
         if wrld.bomb_at(bomb[0], bomb[1]).timer:
             if (abs(tile[0] - bomb[0]) <= 4 and tile[1] == bomb[1]) or (abs(tile[1] - bomb[1]) <= 4 and tile[0] == bomb[0]):
                 return wrld.bomb_at(bomb[0], bomb[1]).timer
@@ -595,10 +648,11 @@ class QLearningCharacter(CharacterEntity):
             # print("Posistion change: ",nextWorld.me(self).x - newWorld.me(self).x, nextWorld.me(self).y - newWorld.me(self).y)
             return nextWorld
         except Exception as e:
+            return None
             print("Layer 1: ",e)
             print("Action: ",action)
             print("World: ====================================================",newWorld)
-            newWorld.printit()
+            # newWorld.printit()
             try:
                 nextWorld,_ = newWorld.next()
                 return nextWorld

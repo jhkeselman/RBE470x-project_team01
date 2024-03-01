@@ -12,6 +12,7 @@ This section will dive deeper into specific pieces of our code. We will briefly 
 ### 2.1 Initialization
 We modified our `__init__` method to include the initialization of our q-learning weights, as well as the loading of weights from a .csv file if they exist. This allows us to train our character over multiple games, and to save the weights to a file for future use. We're using `numpy` to help manage our weights and the .csv file. If the `weights.csv` file does not exist, we initialize our weights to random values between 0 and 1, and if it does exist, we load the weights from the file, with a small check to ensure that the weights are matched to the features.
 
+
 ### 2.2 State Machine
 Like project 1, our state machine was implemented in the `do` function. The state machine is generally structured as follows:
 ```
@@ -24,8 +25,10 @@ else if there is a path to goal:
     Get shortest distance from the goal to a monster
     If that distance is two greater than distance from character to goal:
         A* to goal
+
 get optimal action using q-learning
 if no optimal action or random chance (1% of the time):
+
     Choose random action
 else:
     Choose optimal action from results of q-learning
