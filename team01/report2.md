@@ -104,7 +104,12 @@ We trained our character using a series of environments based on five provided v
 ## 3. Experimental Evaluation
 
 ### 3.1 Variant 1:
+For training on a copy of variant 1, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
 ### 3.2 Variant 2:
+For training on a copy of variant 2, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
 ### 3.3 Variant 3:
+For training on a copy of variant 3, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
 ### 3.4 Variant 4:
+For training on a copy of variant 4, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
 ### 3.5 Variant 5:
+For training on a copy of variant 5, our character survived [a] trials out of [b] total trials, for a survival rate of [c].
