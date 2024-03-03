@@ -22,8 +22,11 @@ class PriorityQueue: #priority queue class which wraps the heapq module
         """
         for i in range(0, len(self.elements)):
             it = self.elements[i]
-            if (it[1][0] == element[0]):
+            # print("it",it)
+            if (it[1][1] == element[1]):
+                # print("Element already in queue", element[1])
                 if (it[0] > priority):
+                    # print("Priority is lower than the one already in queue")
                     self.elements[i] = (priority, element)
                     heapq.heapify(self.elements)
                 return

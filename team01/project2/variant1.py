@@ -9,16 +9,17 @@ from game import Game
 # TODO This is your code!
 sys.path.insert(1, '../teamNN')
 from testcharacter import TestCharacter
+from qlearningcharacter import QLearningCharacter
 
 
 # Create the game
 g = Game.fromfile('map.txt')
 
 # TODO Add your character
-g.add_character(TestCharacter("me", # name
+g.add_character(QLearningCharacter("me", # name
                               "C",  # avatar
                               0, 0  # position
 ))
 
 # Run!
-g.go()
+g.go(1)
